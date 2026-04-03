@@ -2188,6 +2188,16 @@ function render(){
     wrap.appendChild(el('div',{style:{textAlign:'center',fontSize:'9px',color:'#4a6a85',marginBottom:'10px',lineHeight:'1.5'}},'All assessments accumulate automatically in browser storage. Export CSV at any time — it includes every assessment taken on this device. No need to export after each measurement.'));
     app.appendChild(wrap);
   }
+
+  // Guaranteed non-blank fallback for unexpected phase/state combinations.
+  if(app&&app.children.length===0){
+    app.appendChild(el('div',{className:'card',style:{border:'1px solid rgba(255,165,2,0.45)'}},
+      el('div',{style:{fontSize:'14px',fontWeight:'700',color:'#ffa502',marginBottom:'8px'}},'UI Recovery Notice'),
+      el('div',{style:{fontSize:'11px',color:'#c8dae8',lineHeight:'1.6'}},'App entered an unexpected state and recovered safely.'),
+      el('div',{className:'mono',style:{fontSize:'10px',color:'#5a7a9a',marginTop:'6px'}},'phase='+(state.phase||'unknown'))
+    ));
+    state.phase='demographics';
+  }
 }
 
 window.addEventListener('error',function(ev){
@@ -2214,7 +2224,19 @@ window.addEventListener('unhandledrejection',function(ev){
     '</div>';
   }catch(_e){}
 });
-render();
+try{
+  render();
+}catch(e){
+  try{
+    var app=document.getElementById('app');
+    if(app){
+      app.innerHTML='<div class="card" style="border:1px solid rgba(255,71,87,0.45)">'+
+        '<div style="font-size:14px;color:#ff6b81;font-weight:700;margin-bottom:8px">Startup Error</div>'+
+        '<div style="font-size:11px;color:#c8dae8;line-height:1.6">'+String((e&&e.message)||e)+'</div>'+
+      '</div>';
+    }
+  }catch(_e){}
+}
 </script>
 </body>
 </html>
