@@ -101,10 +101,10 @@ canvas.waveform{width:100%;height:70px;border-radius:8px;background:#0a1628;bord
       <span class="research-badge">v3 Research</span>
     </div>
     <p class="mono" style="color:#4a6a85;font-size:9px;letter-spacing:2px;text-transform:uppercase;">Research-Grade Acoustic Lung Prediction · Full Waveform Analysis · Fully Offline</p>
-    <p class="mono" style="color:#3a5a7a;font-size:8px;margin-top:4px">Build 2026-04-03-lowconf-gate</p>
+    <p class="mono" style="color:#3a5a7a;font-size:8px;margin-top:4px">Build 2026-04-03-mobile-audio-pick</p>
     <div id="history-toggle-area"></div>
   </div>
-  <div class="container" id="app"><div id="pulmovox-preboot" class="card" style="max-width:820px;margin:0 auto;text-align:center;padding:16px"><p style="font-size:12px;color:#8aa4ba;margin:0">Loading PulmoVox…</p><p class="mono" style="font-size:9px;color:#4a6a85;margin-top:6px">Build 2026-04-03-lowconf-gate — after deploy you must see this line; if not, browser is showing an old cached page.</p><p style="font-size:10px;color:#5a7a9a;margin-top:8px;line-height:1.5">Use <span class="mono">https://drvamsimutnuri-stack.github.io/LERTZZ/</span> (include <span class="mono">/LERTZZ/</span>).</p></div></div>
+  <div class="container" id="app"><div id="pulmovox-preboot" class="card" style="max-width:820px;margin:0 auto;text-align:center;padding:16px"><p style="font-size:12px;color:#8aa4ba;margin:0">Loading PulmoVox…</p><p class="mono" style="font-size:9px;color:#4a6a85;margin-top:6px">Build 2026-04-03-mobile-audio-pick — after deploy you must see this line; if not, browser is showing an old cached page.</p><p style="font-size:10px;color:#5a7a9a;margin-top:8px;line-height:1.5">Use <span class="mono">https://drvamsimutnuri-stack.github.io/LERTZZ/</span> (include <span class="mono">/LERTZZ/</span>).</p></div></div>
 </div>
 
 <script>
@@ -156,7 +156,7 @@ function collectSessionMeta(){
     isSecureContext:!!window.isSecureContext
   };
 }
-var PULMOVOX_BUILD_ID='2026-04-03-lowconf-gate';
+var PULMOVOX_BUILD_ID='2026-04-03-mobile-audio-pick';
 
 // === MULTILINGUAL PASSAGES ===
 const PASSAGES = {
@@ -239,9 +239,11 @@ function yinPitchDetect(buffer, sampleRate, threshold) {
 }
 
 // Extract pitch track from full audio using YIN in overlapping frames
-function extractPitchTrack(samples, sampleRate, vadThreshold, yinThreshold) {
+function extractPitchTrack(samples, sampleRate, vadThreshold, yinThreshold, f0Min, f0Max) {
   vadThreshold = vadThreshold || 0.01;
   yinThreshold = yinThreshold || 0.25; // Praat default — works for connected speech
+  if (f0Min == null) f0Min = 50;
+  if (f0Max == null) f0Max = 500;
   const frameSize = Math.round(sampleRate * 0.04); // 40ms frames
   const hopSize = Math.round(sampleRate * 0.01);   // 10ms hop
   const pitches = [];
@@ -253,7 +255,7 @@ function extractPitchTrack(samples, sampleRate, vadThreshold, yinThreshold) {
     
     if (rms > vadThreshold) { // Adaptive voice activity detection
       const pitch = yinPitchDetect(frame, sampleRate, yinThreshold);
-      if (pitch !== null && pitch > 50 && pitch < 500) { // Wider range: 50-500Hz covers all voices
+      if (pitch !== null && pitch > f0Min && pitch < f0Max) {
         pitches.push(pitch);
         times.push(start / sampleRate);
       }
@@ -590,17 +592,50 @@ function analyzeFullWaveform(audioBuffer, sampleRate, passageWordCount, cal) {
   }
 
   const duration = samples.length / sampleRate;
+
+  // Recording-adaptive VAD for pitch: calibration noise floor can be wrong on phones; use quietest ~12% of frames
+  const frameSizeV = Math.round(sampleRate * 0.04);
+  const hopSizeV = Math.round(sampleRate * 0.01);
+  const rmsFrames = [];
+  for (let st = 0; st + frameSizeV < samples.length; st += hopSizeV) {
+    const fr = samples.subarray(st, st + frameSizeV);
+    let ss = 0;
+    for (let i = 0; i < fr.length; i++) ss += fr[i] * fr[i];
+    rmsFrames.push(Math.sqrt(ss / fr.length));
+  }
+  let vadForPitch = vadThreshold;
+  if (rmsFrames.length > 12) {
+    const sorted = rmsFrames.slice().sort((a, b) => a - b);
+    const p12 = sorted[Math.floor(sorted.length * 0.12)];
+    vadForPitch = Math.min(vadThreshold, Math.max(0.002, p12 * 2.8 + 0.0008));
+  }
   
   // 1. YIN pitch track — noisier mobile mics need a higher CMNDF threshold (accept weaker periodicity)
+  const f0Lo = mob ? 42 : 50;
+  const f0Hi = mob ? 520 : 500;
   let yinThreshold = mob ? 0.38 : 0.25;
-  let { pitches, times: pitchTimes } = extractPitchTrack(samples, sampleRate, vadThreshold, yinThreshold);
+  let { pitches, times: pitchTimes } = extractPitchTrack(samples, sampleRate, vadForPitch, yinThreshold, f0Lo, f0Hi);
   if (pitches.length < 5) {
-    const vad2 = Math.max(0.003, vadThreshold * 0.6);
+    const vad2 = Math.max(0.0025, vadForPitch * 0.6);
     const yin2 = Math.min(0.58, yinThreshold + 0.18);
-    const second = extractPitchTrack(samples, sampleRate, vad2, yin2);
+    const second = extractPitchTrack(samples, sampleRate, vad2, yin2, f0Lo, f0Hi);
     if (second.pitches.length > pitches.length) {
       pitches = second.pitches;
       pitchTimes = second.times;
+    }
+  }
+  if (pitches.length < 5 && mob) {
+    const third = extractPitchTrack(samples, sampleRate, Math.max(0.002, vadForPitch * 0.5), Math.min(0.68, yinThreshold + 0.24), 40, 550);
+    if (third.pitches.length > pitches.length) {
+      pitches = third.pitches;
+      pitchTimes = third.times;
+    }
+  }
+  if (pitches.length < 5 && mob) {
+    const fourth = extractPitchTrack(samples, sampleRate, 0.002, 0.75, 38, 560);
+    if (fourth.pitches.length > pitches.length) {
+      pitches = fourth.pitches;
+      pitchTimes = fourth.times;
     }
   }
   const avgPitch = pitches.length > 0 ? pitches.reduce((a, b) => a + b, 0) / pitches.length : 0;
@@ -658,7 +693,7 @@ function analyzeFullWaveform(audioBuffer, sampleRate, passageWordCount, cal) {
   const avgSpectral = computeSpectralCentroidFull(samples, sampleRate);
   
   // 7. Breathing analysis + MPT (adaptive VAD via gain-normalized samples)
-  const breathing = analyzeBreathing(hnrBuffer, sampleRate, vadThreshold);
+  const breathing = analyzeBreathing(hnrBuffer, sampleRate, vadForPitch);
   let mpt = 0, currentVoiced = 0;
   for (let i = 1; i < pitchTimes.length; i++) {
     const gap = pitchTimes[i] - pitchTimes[i - 1];
@@ -1265,6 +1300,15 @@ async function stopRecording(){
 
     let samples=null, sr=44100;
 
+    function midSegmentRms(buf){
+      if(!buf||buf.length<256)return 0;
+      var mid=Math.floor(buf.length/4);
+      var len=Math.min(16384,buf.length-mid);
+      var s=0;
+      for(var i=mid;i<mid+len;i++)s+=buf[i]*buf[i];
+      return Math.sqrt(s/len);
+    }
+
     function mergePcmIfAudible(){
       if(pcmChunks.length===0)return null;
       var rate=pcmSampleRate||44100;
@@ -1276,55 +1320,50 @@ async function stopRecording(){
       var pcmMid=Math.floor(merged.length/4);
       var pcmCheckLen=Math.min(16384,merged.length-pcmMid);
       if(pcmCheckLen<256)return null;
-      var pcmRMS=0;
-      for(var i=pcmMid;i<pcmMid+pcmCheckLen;i++)pcmRMS+=merged[i]*merged[i];
+      var pcmRMS=0,peak=0;
+      for(var i=0;i<merged.length;i++){var a=Math.abs(merged[i]);if(a>peak)peak=a;}
+      for(i=pcmMid;i<pcmMid+pcmCheckLen;i++)pcmRMS+=merged[i]*merged[i];
       pcmRMS=Math.sqrt(pcmRMS/pcmCheckLen);
-      if(pcmRMS>1e-6)return{buf:merged,sr:rate};
+      if(pcmRMS>1e-7||peak>4e-6)return{buf:merged,sr:rate};
       return null;
     }
 
-    // Android/Samsung: prefer live PCM — decodeAudioData on WebM often yields silence while mic was active
-    if(BROWSER.isAndroid||BROWSER.isSamsung){
-      var pcmTry=mergePcmIfAudible();
-      if(pcmTry){samples=pcmTry.buf;sr=pcmTry.sr;}
-    }
-
-    // === PATH 1: MediaRecorder chunks (Chrome, Firefox, modern browsers) ===
-    if(!samples&&audioChunks.length>0){
-      // Use the actual recorded mimeType — never force audio/webm on unknown codec
-      // Safari records mp4/aac — if we label it webm, decodeAudioData returns silence
-      let blobType='';
+    var pcmPath=mergePcmIfAudible();
+    var blobPath=null;
+    if(audioChunks.length>0){
+      var blobType='';
       if(state.mimeType&&state.mimeType!=='browser-default'&&state.mimeType!=='analyser-only'&&state.mimeType!=='pcm-fallback'){
         blobType=state.mimeType;
       }
-      // If blobType is empty, browser will sniff format from actual bytes — correct behaviour
       const blob=new Blob(audioChunks,blobType?{type:blobType}:{});
       const arrayBuf=await blob.arrayBuffer();
-      const ac=createAudioContext();
-      if(ac&&ac.state==='suspended'){try{await ac.resume();}catch(e){}}
-      let decoded=null;
-      try{decoded=await ac.decodeAudioData(arrayBuf);}catch(e){decoded=null;}
+      const acDec=createAudioContext();
+      if(acDec&&acDec.state==='suspended'){try{await acDec.resume();}catch(e){}}
+      var decoded=null;
+      try{decoded=await acDec.decodeAudioData(arrayBuf.slice(0));}catch(e){decoded=null;}
       if(decoded&&decoded.length>0){
-        const testSamples=decoded.getChannelData(0);
-        // Sample from MIDDLE of recording — Android has silent pre-roll at start
-        // First 4096 samples (~93ms) may be silence even when voice was recorded
-        const midStart=Math.floor(testSamples.length/4);
-        const checkLen=Math.min(8192,testSamples.length-midStart);
-        let testRMS=0;
-        for(let i=midStart;i<midStart+checkLen;i++) testRMS+=testSamples[i]*testSamples[i];
-        testRMS=Math.sqrt(testRMS/checkLen);
-        if(testRMS>1e-6){
-          samples=testSamples;
-          sr=decoded.sampleRate;
+        var testSamples;
+        if(decoded.numberOfChannels>1){
+          var b0=decoded.getChannelData(0),b1=decoded.getChannelData(1);
+          testSamples=new Float32Array(b0.length);
+          for(var bi=0;bi<b0.length;bi++)testSamples[bi]=Math.abs(b0[bi])>=Math.abs(b1[bi])?b0[bi]:b1[bi];
+        }else{
+          testSamples=decoded.getChannelData(0);
         }
+        if(midSegmentRms(testSamples)>1e-7)blobPath={buf:testSamples,sr:decoded.sampleRate};
       }
-      if(ac)ac.close();
+      if(acDec)acDec.close();
     }
 
-    // === PATH 2: ScriptProcessor PCM fallback (Safari, iOS, silent MediaRecorder decode, non-Android) ===
-    if(!samples&&pcmChunks.length>0){
-      var p2=mergePcmIfAudible();
-      if(p2){samples=p2.buf;sr=p2.sr;}
+    if(BROWSER.isMobile){
+      var rP=pcmPath?midSegmentRms(pcmPath.buf):0;
+      var rB=blobPath?midSegmentRms(blobPath.buf):0;
+      if(rP>=rB&&pcmPath){samples=pcmPath.buf;sr=pcmPath.sr;}
+      else if(blobPath){samples=blobPath.buf;sr=blobPath.sr;}
+      else if(pcmPath){samples=pcmPath.buf;sr=pcmPath.sr;}
+    }else{
+      if(blobPath){samples=blobPath.buf;sr=blobPath.sr;}
+      else if(pcmPath){samples=pcmPath.buf;sr=pcmPath.sr;}
     }
 
     if(!samples){
@@ -2029,7 +2068,8 @@ function render(){
       '🔇 You stopped recording before speaking — press Record, then speak',
       '📱 Phone mic blocked or covered — check device orientation',
       '🌐 Browser decoded audio silently — try refreshing and repeating',
-      '📋 Protocol A: Make sure to actually say Ahhh after pressing Begin'
+      '📋 Protocol A: Make sure to actually say Ahhh after pressing Begin',
+      '📊 Multicentre validation: treat phone captures as higher variance — record device model, browser, and app build; exclude runs below your minimum voiced-frame rule for primary analysis'
     ].forEach(txt=>{
       causesBox.appendChild(el('div',{style:{fontSize:'10px',color:'#8aa4ba',lineHeight:'1.8'}},txt));
     });
