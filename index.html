@@ -728,7 +728,6 @@ const state = {
     calStatus: ''
   }
 };
-state.sessionMeta=collectSessionMeta();
 try{const saved=localStorage.getItem("pulmovox3_history");if(saved)state.assessmentHistory=JSON.parse(saved);}catch(e){}
 // Subject code management: alphabetical prefix + numeric counter (e.g., KEM0001)
 const SUBJECT_COUNTERS_KEY='pulmovox3_subjectCountersByPrefix';
@@ -840,10 +839,11 @@ var BROWSER=detectBrowser();
 
 function collectSessionMeta(){
   var nav=navigator||{};
+  var b=(typeof BROWSER!=='undefined'&&BROWSER)?BROWSER:detectBrowser();
   var scr=(typeof window!=='undefined'&&window.screen)?window.screen:null;
   return{
-    browser:BROWSER.browserName,
-    platform:BROWSER.platform,
+    browser:b.browserName,
+    platform:b.platform,
     ua:nav.userAgent||'',
     language:nav.language||'',
     hardwareConcurrency:nav.hardwareConcurrency||'',
@@ -856,6 +856,7 @@ function collectSessionMeta(){
     isSecureContext:!!window.isSecureContext
   };
 }
+state.sessionMeta=collectSessionMeta();
 
 function getBestMimeType(){
   if(typeof MediaRecorder==='undefined')return null;
