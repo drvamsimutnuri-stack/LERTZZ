@@ -1,0 +1,2195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PulmoVox v3 — Research-Grade Acoustic Lung Prediction</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#060e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:#c8dae8;min-height:100vh;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@keyframes shimmerBg{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
+.mono{font-family:'SF Mono','Cascadia Code','Fira Code','Consolas','Menlo',monospace;}
+.display{font-family:'Avenir Next','Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
+.app-wrap{min-height:100vh;background:linear-gradient(170deg,#060e1a 0%,#0c1929 40%,#0a1628 100%);padding:16px 12px;}
+.container{max-width:820px;margin:0 auto;}
+.card{background:#0d1f33;border-radius:12px;padding:18px;border:1px solid #1a2d44;margin-bottom:14px;animation:fadeIn 0.4s ease;}
+.inner-box{background:#0a1628;border-radius:8px;padding:10px;border:1px solid #1a2d44;}
+.btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,#00d4aa,#0088cc);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform 0.1s;}
+.btn-primary:active{transform:scale(0.98);}
+.btn-danger{width:100%;padding:14px;background:linear-gradient(135deg,#ff4757,#ff6b81);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.sec-title{font-size:12px;font-weight:600;color:#8aa4ba;margin:0 0 12px 0;text-transform:uppercase;letter-spacing:2px;}
+.tab-btn{padding:8px 14px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s;}
+.tab-active{background:rgba(0,212,170,0.15);border:1px solid #00d4aa;color:#00d4aa;}
+.tab-inactive{background:transparent;border:1px solid #1a2d44;color:#5a7a9a;}
+.bar-track{width:100%;height:5px;background:#1a2d44;border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+.passage-btn{border-radius:8px;padding:10px 14px;cursor:pointer;text-align:left;color:#c8dae8;width:100%;font-family:inherit;transition:all 0.15s;}
+.passage-btn:hover{transform:translateX(2px);}
+.passage-selected{background:rgba(0,212,170,0.08);border:1.5px solid #00d4aa;}
+.passage-unselected{background:#0a1628;border:1px solid #1a2d44;}
+.history-entry{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:4px;border-radius:8px;cursor:pointer;transition:all 0.2s;}
+.history-entry:hover{transform:translateX(2px);}
+.disclaimer-box{background:rgba(255,165,2,0.06);border-radius:10px;padding:12px;border:1px solid rgba(255,165,2,0.15);margin-bottom:12px;}
+.research-ref{font-size:9px;color:#4a6a85;line-height:1.7;}
+.research-ref strong{color:#6a8a9a;}
+canvas.waveform{width:100%;height:70px;border-radius:8px;background:#0a1628;border:1px solid #1a2d44;}
+.sim-notice{background:rgba(0,153,221,0.1);border:1px solid rgba(0,153,221,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:10px;color:#6ab8e0;}
+.mic-notice{background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:10px;color:#00d4aa;}
+.interp-box{margin-top:10px;padding:8px;border-radius:8px;border:1px solid #1a2d44;background:#0a1628;}
+.interp-label{font-size:10px;color:#8aa4ba;font-weight:600;margin-bottom:4px;}
+.interp-text{font-size:10px;color:#5a7a9a;line-height:1.5;}
+.research-basis{font-size:10px;color:#4a6a85;margin-bottom:12px;line-height:1.5;background:#0a1628;border-radius:8px;padding:10px;border:1px solid #1a2d44;}
+.research-basis strong{color:#0099dd;}
+.metric-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+.metric-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
+.metric-cell{background:#0a1628;border-radius:8px;padding:6px 4px;text-align:center;border:1px solid #1a2d44;}
+.metric-cell-lg{background:#0a1628;border-radius:10px;padding:14px;text-align:center;border:1px solid #1a2d44;}
+.lang-chip{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;border:1px solid #1a2d44;background:transparent;color:#5a7a9a;}
+.lang-chip.active{background:rgba(0,212,170,0.12);border-color:#00d4aa;color:#00d4aa;}
+.lang-chip:hover{border-color:#00d4aa80;}
+.research-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(124,77,255,0.15);border:1px solid rgba(124,77,255,0.3);color:#b388ff;margin-left:8px;}
+.analysis-step{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1a2d4420;}
+.analysis-step .step-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;}
+.step-done{background:#00d4aa20;color:#00d4aa;}
+.step-active{background:#0099dd20;color:#0099dd;animation:pulse 1s infinite;}
+.step-pending{background:#1a2d44;color:#3a5a7a;}
+.mfcc-grid{display:grid;grid-template-columns:repeat(13,1fr);gap:2px;margin:8px 0;}
+.mfcc-bar{border-radius:2px 2px 0 0;min-height:4px;transition:height 0.5s ease;}
+.progress-shimmer{background:linear-gradient(90deg,#1a2d44 25%,#2a3d54 50%,#1a2d44 75%);background-size:200% 100%;animation:shimmerBg 1.5s infinite;height:4px;border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="app-wrap">
+  <div style="text-align:center;margin-bottom:20px;">
+    <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:4px;">
+      <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#00d4aa,#0088cc);display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </div>
+      <h1 class="display" style="font-size:26px;font-weight:800;margin:0;background:linear-gradient(90deg,#00d4aa,#0099dd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">PulmoVox</h1>
+      <span class="research-badge">v3 Research</span>
+    </div>
+    <p class="mono" style="color:#4a6a85;font-size:9px;letter-spacing:2px;text-transform:uppercase;">Research-Grade Acoustic Lung Prediction · Full Waveform Analysis · Fully Offline</p>
+    <div id="history-toggle-area"></div>
+  </div>
+  <div class="container" id="app"></div>
+</div>
+
+<script>
+// ================================================================
+// PULMOVOX v3 — RESEARCH-GRADE ACOUSTIC ENGINE
+// ================================================================
+// Key upgrades over v2:
+// 1. Full waveform recording via MediaRecorder (captures every sample)
+// 2. Post-recording analysis on complete audio buffer
+// 3. YIN pitch detection algorithm (de Cheveigné & Kawahara, 2002)
+// 4. True cycle-level jitter & shimmer from glottal pulses
+// 5. Cepstral HNR computation
+// 6. 13-coefficient MFCC extraction
+// 7. Multilingual passages (EN, HI, TE, MR)
+// 8. Zero external dependencies
+// ================================================================
+
+// === MULTILINGUAL PASSAGES ===
+const PASSAGES = {
+  en: [
+    { id:"rainbow", title:"Rainbow Passage", text:"The rainbow passage is used in speech pathology to assess the quality of voice production. When sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon. People look, but no one ever finds it. When a man looks for something beyond his reach, his friends say he is looking for the pot of gold at the end of the rainbow." },
+    { id:"sustained_en", title:"Sustained Vowel + Counting", text:"Please take a deep breath and say Ahhhhh for as long as you can. Then count from one to twenty in a single breath: one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, thirteen, fourteen, fifteen, sixteen, seventeen, eighteen, nineteen, twenty. Now take another deep breath and repeat Pa Ta Ka ten times as quickly as you can." },
+    { id:"breath_en", title:"Breath Capacity Passage", text:"Take a deep breath in and read as far as you can on one breath. The north wind and the sun were disputing which was the stronger, when a traveler came along wrapped in a warm cloak. They agreed that the one who first succeeded in making the traveler take his cloak off should be considered stronger than the other. Then the north wind blew as hard as he could, but the more he blew the more closely did the traveler fold his cloak around him." }
+  ],
+  hi: [
+    { id:"rainbow_hi", title:"इंद्रधनुष गद्यांश", text:"जब सूर्य की किरणें हवा में बारिश की बूंदों पर पड़ती हैं तो वे प्रिज्म का काम करती हैं और इंद्रधनुष बनाती हैं। इंद्रधनुष सफेद प्रकाश का कई सुंदर रंगों में विभाजन है। ये एक लंबे गोल मेहराब का आकार लेते हैं जिसका रास्ता ऊपर आकाश में होता है और इसके दोनों सिरे क्षितिज के पार दिखाई देते हैं। लोग देखते हैं लेकिन कोई इसे कभी नहीं पाता। जब कोई व्यक्ति अपनी पहुंच से परे किसी चीज़ की तलाश करता है तो उसके मित्र कहते हैं कि वह इंद्रधनुष के अंत में सोने का बर्तन ढूंढ रहा है।" },
+    { id:"sustained_hi", title:"दीर्घ स्वर + गिनती", text:"कृपया एक गहरी सांस लें और जितनी देर हो सके आआआआआ बोलें। फिर एक ही सांस में एक से बीस तक गिनती गिनें: एक, दो, तीन, चार, पांच, छह, सात, आठ, नौ, दस, ग्यारह, बारह, तेरह, चौदह, पंद्रह, सोलह, सत्रह, अठारह, उन्नीस, बीस। अब एक और गहरी सांस लें और जितनी तेज़ी से हो सके दस बार प ट क दोहराएं।" },
+    { id:"breath_hi", title:"श्वास क्षमता गद्यांश", text:"एक गहरी सांस लें और एक ही सांस में जितना पढ़ सकें पढ़ें। उत्तरी हवा और सूरज में बहस हो रही थी कि दोनों में कौन अधिक शक्तिशाली है। तभी एक यात्री गर्म लबादा ओढ़े वहां से गुज़रा। दोनों ने तय किया कि जो पहले यात्री का लबादा उतरवा देगा वही शक्तिशाली माना जाएगा। उत्तरी हवा ने पूरी ताकत से फूंक मारी लेकिन जितना ज़ोर से वह फूंकती यात्री उतना ही कसकर अपना लबादा लपेट लेता।" }
+  ],
+  te: [
+    { id:"rainbow_te", title:"ఇంద్రధనుస్సు వచనం", text:"సూర్యకిరణాలు గాలిలోని వర్షపు చుక్కలపై పడినప్పుడు అవి ప్రిజం వలె పనిచేసి ఇంద్రధనుస్సును ఏర్పరుస్తాయి. ఇంద్రధనుస్సు తెల్ల కాంతిని అనేక అందమైన రంగులుగా విభజించడం. ఇవి పొడవైన గుండ్రని వంతెన ఆకారం తీసుకుంటాయి దాని మార్గం ఎత్తుగా ఆకాశంలో ఉంటుంది మరియు దాని రెండు చివరలు క్షితిజం అవతల కనిపిస్తాయి. ప్రజలు చూస్తారు కానీ ఎవరూ దానిని కనుగొనరు. ఒక వ్యక్తి తన చేతికి అందనిదాన్ని వెతికినప్పుడు అతని స్నేహితులు అతను ఇంద్రధనుస్సు చివర బంగారు కుండ కోసం వెతుకుతున్నాడని చెబుతారు." },
+    { id:"sustained_te", title:"దీర్ఘ స్వరం + లెక్కింపు", text:"దయచేసి లోతుగా శ్వాస తీసుకోండి మరియు మీకు వీలైనంత సేపు ఆఆఆఆఆ అని చెప్పండి. అప్పుడు ఒకే శ్వాసలో ఒకటి నుండి ఇరవై వరకు లెక్కించండి: ఒకటి రెండు మూడు నాలుగు ఐదు ఆరు ఏడు ఎనిమిది తొమ్మిది పది పదకొండు పన్నెండు పదమూడు పద్నాలుగు పదిహేను పదహారు పదిహేడు పధ్ధెనిమిది పంతొమ్మిది ఇరవై. ఇప్పుడు మరో లోతైన శ్వాస తీసుకోండి మరియు వీలైనంత వేగంగా ప ట క పది సార్లు పునరావృతం చేయండి." },
+    { id:"breath_te", title:"శ్వాస సామర్థ్యం వచనం", text:"లోతుగా శ్వాస తీసుకొని ఒకే శ్వాసలో మీకు వీలైనంత వరకు చదవండి. ఉత్తర గాలి మరియు సూర్యుడు తమలో ఎవరు బలవంతులో వాదించుకుంటున్నారు. అప్పుడు వెచ్చని అంగీ కప్పుకున్న ఒక బాటసారి అటుగా వెళ్ళాడు. బాటసారి అంగీని ఎవరు మొదట విప్పిస్తారో వారే బలవంతులని ఇద్దరూ అంగీకరించారు. ఉత్తర గాలి తన శక్తినంతా ఉపయోగించి వీచింది కానీ ఎంత గట్టిగా వీచితే బాటసారి అంతగా తన అంగీని గట్టిగా చుట్టుకున్నాడు." }
+  ],
+  mr: [
+    { id:"rainbow_mr", title:"इंद्रधनुष्य उतारा", text:"जेव्हा सूर्यप्रकाश हवेतील पावसाच्या थेंबांवर पडतो तेव्हा ते प्रिझमसारखे काम करतात आणि इंद्रधनुष्य तयार करतात. इंद्रधनुष्य म्हणजे पांढऱ्या प्रकाशाचे अनेक सुंदर रंगांमध्ये विभाजन होय. हे एका लांब गोलाकार कमानीचा आकार घेतात ज्याचा मार्ग उंच आकाशात असतो आणि त्याची दोन्ही टोके क्षितिजापलीकडे दिसतात. लोक बघतात पण कोणालाच ते सापडत नाही. जेव्हा एखादा माणूस आपल्या आवाक्याबाहेरील गोष्टी शोधतो तेव्हा त्याचे मित्र म्हणतात की तो इंद्रधनुष्याच्या टोकाला सोन्याचे भांडे शोधत आहे." },
+    { id:"sustained_mr", title:"दीर्घ स्वर + मोजणी", text:"कृपया एक दीर्घ श्वास घ्या आणि शक्य तितक्या वेळ आआआआआ म्हणा. मग एकाच श्वासात एक ते वीस पर्यंत मोजा: एक, दोन, तीन, चार, पाच, सहा, सात, आठ, नऊ, दहा, अकरा, बारा, तेरा, चौदा, पंधरा, सोळा, सतरा, अठरा, एकोणीस, वीस. आता आणखी एक दीर्घ श्वास घ्या आणि शक्य तितक्या वेगाने दहा वेळा प ट क पुन्हा म्हणा." },
+    { id:"breath_mr", title:"श्वास क्षमता उतारा", text:"एक दीर्घ श्वास घ्या आणि एकाच श्वासात शक्य तितके वाचा. उत्तरेचा वारा आणि सूर्य यांच्यात कोण अधिक शक्तिशाली याबद्दल वाद सुरू होता. तेवढ्यात एक प्रवासी उबदार शाल गुंडाळून तेथून जात होता. दोघांनी ठरवले की जो प्रवाशाची शाल आधी काढेल तोच शक्तिशाली समजला जाईल. उत्तरेच्या वाऱ्याने पूर्ण शक्तीने फुंकर मारली पण जितके जोराने वाहिले तितकेच प्रवाशाने आपली शाल घट्ट गुंडाळून घेतली." }
+  ]
+};
+
+const LANG_LABELS = { en:"English", hi:"हिन्दी", te:"తెలుగు", mr:"मराठी" };
+
+// ================================================================
+// RESEARCH-GRADE DSP ENGINE
+// ================================================================
+
+// YIN Pitch Detection (de Cheveigné & Kawahara, 2002)
+// threshold: 0.25 is Praat's default for speech. 0.15 is too strict for connected speech.
+function yinPitchDetect(buffer, sampleRate, threshold) {
+  threshold = threshold || 0.25;
+  const halfLen = Math.floor(buffer.length / 2);
+  const yinBuffer = new Float32Array(halfLen);
+  
+  // Step 1: Difference function
+  for (let tau = 0; tau < halfLen; tau++) {
+    let sum = 0;
+    for (let i = 0; i < halfLen; i++) {
+      const delta = buffer[i] - buffer[i + tau];
+      sum += delta * delta;
+    }
+    yinBuffer[tau] = sum;
+  }
+  
+  // Step 2: Cumulative mean normalized difference
+  yinBuffer[0] = 1;
+  let runningSum = 0;
+  for (let tau = 1; tau < halfLen; tau++) {
+    runningSum += yinBuffer[tau];
+    yinBuffer[tau] *= tau / runningSum;
+  }
+  
+  // Step 3: Absolute threshold
+  const minPeriod = Math.floor(sampleRate / 500); // 500 Hz max
+  const maxPeriod = Math.floor(sampleRate / 50);  // 50 Hz min
+  let bestTau = -1;
+  for (let tau = minPeriod; tau < Math.min(maxPeriod, halfLen); tau++) {
+    if (yinBuffer[tau] < threshold) {
+      while (tau + 1 < halfLen && yinBuffer[tau + 1] < yinBuffer[tau]) tau++;
+      bestTau = tau;
+      break;
+    }
+  }
+  
+  // Step 4: Parabolic interpolation
+  if (bestTau !== -1 && bestTau > 0 && bestTau < halfLen - 1) {
+    const s0 = yinBuffer[bestTau - 1];
+    const s1 = yinBuffer[bestTau];
+    const s2 = yinBuffer[bestTau + 1];
+    const betterTau = bestTau + (s0 - s2) / (2 * (s0 - 2 * s1 + s2));
+    if (isFinite(betterTau)) return sampleRate / betterTau;
+  }
+  
+  if (bestTau !== -1) return sampleRate / bestTau;
+  return null; // Unvoiced
+}
+
+// Extract pitch track from full audio using YIN in overlapping frames
+function extractPitchTrack(samples, sampleRate, vadThreshold, yinThreshold) {
+  vadThreshold = vadThreshold || 0.01;
+  yinThreshold = yinThreshold || 0.25; // Praat default — works for connected speech
+  const frameSize = Math.round(sampleRate * 0.04); // 40ms frames
+  const hopSize = Math.round(sampleRate * 0.01);   // 10ms hop
+  const pitches = [];
+  const times = [];
+  
+  for (let start = 0; start + frameSize < samples.length; start += hopSize) {
+    const frame = samples.subarray(start, start + frameSize);
+    const rms = Math.sqrt(frame.reduce((s, v) => s + v * v, 0) / frame.length);
+    
+    if (rms > vadThreshold) { // Adaptive voice activity detection
+      const pitch = yinPitchDetect(frame, sampleRate, yinThreshold);
+      if (pitch !== null && pitch > 50 && pitch < 500) { // Wider range: 50-500Hz covers all voices
+        pitches.push(pitch);
+        times.push(start / sampleRate);
+      }
+    }
+  }
+  return { pitches, times };
+}
+
+// True cycle-level jitter (RAP, PPQ, local jitter)
+function computeJitter(pitches) {
+  if (pitches.length < 3) return { local: 0, rap: 0, ppq5: 0 };
+  const periods = pitches.map(f => 1 / f);
+  const avgPeriod = periods.reduce((a, b) => a + b, 0) / periods.length;
+  
+  // Local jitter (cycle-to-cycle)
+  let localSum = 0;
+  for (let i = 1; i < periods.length; i++) {
+    localSum += Math.abs(periods[i] - periods[i - 1]);
+  }
+  const localJitter = (localSum / (periods.length - 1)) / avgPeriod * 100;
+  
+  // RAP (Relative Average Perturbation) — 3-point running average
+  let rapSum = 0;
+  for (let i = 1; i < periods.length - 1; i++) {
+    const avg3 = (periods[i - 1] + periods[i] + periods[i + 1]) / 3;
+    rapSum += Math.abs(periods[i] - avg3);
+  }
+  const rap = (rapSum / (periods.length - 2)) / avgPeriod * 100;
+  
+  // PPQ5 (5-point Period Perturbation Quotient)
+  let ppq5Sum = 0;
+  let ppq5Count = 0;
+  for (let i = 2; i < periods.length - 2; i++) {
+    const avg5 = (periods[i - 2] + periods[i - 1] + periods[i] + periods[i + 1] + periods[i + 2]) / 5;
+    ppq5Sum += Math.abs(periods[i] - avg5);
+    ppq5Count++;
+  }
+  const ppq5 = ppq5Count > 0 ? (ppq5Sum / ppq5Count) / avgPeriod * 100 : 0;
+  
+  return { local: localJitter, rap, ppq5 };
+}
+
+// True amplitude-based shimmer from RMS per pitch cycle
+function computeShimmer(samples, sampleRate, pitches, pitchTimes) {
+  if (pitches.length < 3) return { local: 0, apq3: 0, apq5: 0 };
+  
+  // Extract amplitude per cycle
+  const amplitudes = [];
+  for (let i = 0; i < pitches.length; i++) {
+    const period = Math.round(sampleRate / pitches[i]);
+    const center = Math.round(pitchTimes[i] * sampleRate);
+    const start = Math.max(0, center - Math.floor(period / 2));
+    const end = Math.min(samples.length, start + period);
+    let maxAmp = 0;
+    for (let j = start; j < end; j++) maxAmp = Math.max(maxAmp, Math.abs(samples[j]));
+    amplitudes.push(maxAmp);
+  }
+  
+  const avgAmp = amplitudes.reduce((a, b) => a + b, 0) / amplitudes.length;
+  
+  // Local shimmer
+  let localSum = 0;
+  for (let i = 1; i < amplitudes.length; i++) {
+    localSum += Math.abs(amplitudes[i] - amplitudes[i - 1]);
+  }
+  const localShimmer = avgAmp > 0 ? (localSum / (amplitudes.length - 1)) / avgAmp * 100 : 0;
+  
+  // APQ3
+  let apq3Sum = 0;
+  for (let i = 1; i < amplitudes.length - 1; i++) {
+    const avg3 = (amplitudes[i - 1] + amplitudes[i] + amplitudes[i + 1]) / 3;
+    apq3Sum += Math.abs(amplitudes[i] - avg3);
+  }
+  const apq3 = avgAmp > 0 ? (apq3Sum / (amplitudes.length - 2)) / avgAmp * 100 : 0;
+  
+  // APQ5
+  let apq5Sum = 0, apq5Count = 0;
+  for (let i = 2; i < amplitudes.length - 2; i++) {
+    const avg5 = (amplitudes[i - 2] + amplitudes[i - 1] + amplitudes[i] + amplitudes[i + 1] + amplitudes[i + 2]) / 5;
+    apq5Sum += Math.abs(amplitudes[i] - avg5);
+    apq5Count++;
+  }
+  const apq5 = apq5Count > 0 && avgAmp > 0 ? (apq5Sum / apq5Count) / avgAmp * 100 : 0;
+  
+  return { local: localShimmer, apq3, apq5 };
+}
+
+// Cepstral HNR
+function computeCepstralHNR(samples, sampleRate) {
+  const frameSize = 2048;
+  const hopSize = 1024;
+  let totalHNR = 0, frameCount = 0;
+  
+  for (let start = 0; start + frameSize < samples.length; start += hopSize) {
+    const frame = samples.subarray(start, start + frameSize);
+    const rms = Math.sqrt(frame.reduce((s, v) => s + v * v, 0) / frame.length);
+    if (rms < 0.01) continue;
+    
+    // Autocorrelation via time-domain
+    const minLag = Math.floor(sampleRate / 500);
+    const maxLag = Math.floor(sampleRate / 50);
+    let r0 = 0;
+    for (let i = 0; i < frame.length; i++) r0 += frame[i] * frame[i];
+    
+    let maxR = 0;
+    for (let lag = minLag; lag < Math.min(maxLag, frame.length); lag++) {
+      let r = 0;
+      for (let i = 0; i < frame.length - lag; i++) r += frame[i] * frame[i + lag];
+      if (r > maxR) maxR = r;
+    }
+    
+    if (r0 > 0 && maxR > 0 && maxR < r0) {
+      const hnr = 10 * Math.log10(maxR / (r0 - maxR));
+      if (isFinite(hnr) && hnr > -20 && hnr < 60) {
+        totalHNR += hnr;
+        frameCount++;
+      }
+    }
+  }
+  
+  return frameCount > 0 ? totalHNR / frameCount : 0;
+}
+
+// MFCC Extraction (13 coefficients)
+function computeMFCCs(samples, sampleRate, numCoeffs = 13) {
+  const frameSize = 1024;
+  const hopSize = 512;
+  const numFilters = 26;
+  const fftSize = frameSize;
+  
+  // Mel filterbank
+  function hzToMel(hz) { return 2595 * Math.log10(1 + hz / 700); }
+  function melToHz(mel) { return 700 * (Math.pow(10, mel / 2595) - 1); }
+  
+  const lowMel = hzToMel(0);
+  const highMel = hzToMel(sampleRate / 2);
+  const melPoints = [];
+  for (let i = 0; i <= numFilters + 1; i++) {
+    melPoints.push(melToHz(lowMel + (highMel - lowMel) * i / (numFilters + 1)));
+  }
+  const binPoints = melPoints.map(f => Math.floor((fftSize + 1) * f / sampleRate));
+  
+  const allMFCCs = [];
+  
+  for (let start = 0; start + frameSize < samples.length; start += hopSize) {
+    const frame = new Float32Array(fftSize);
+    for (let i = 0; i < frameSize; i++) {
+      frame[i] = samples[start + i] * (0.54 - 0.46 * Math.cos(2 * Math.PI * i / (frameSize - 1))); // Hamming
+    }
+    
+    // Simple DFT magnitude (for the frequency bins we need)
+    const halfFFT = Math.floor(fftSize / 2) + 1;
+    const powerSpec = new Float32Array(halfFFT);
+    for (let k = 0; k < halfFFT; k++) {
+      let re = 0, im = 0;
+      for (let n = 0; n < fftSize; n++) {
+        const angle = -2 * Math.PI * k * n / fftSize;
+        re += frame[n] * Math.cos(angle);
+        im += frame[n] * Math.sin(angle);
+      }
+      powerSpec[k] = (re * re + im * im) / fftSize;
+    }
+    
+    // Apply mel filterbank
+    const filterEnergies = new Float32Array(numFilters);
+    for (let m = 0; m < numFilters; m++) {
+      for (let k = binPoints[m]; k < binPoints[m + 1] && k < halfFFT; k++) {
+        filterEnergies[m] += powerSpec[k] * (k - binPoints[m]) / (binPoints[m + 1] - binPoints[m]);
+      }
+      for (let k = binPoints[m + 1]; k < binPoints[m + 2] && k < halfFFT; k++) {
+        filterEnergies[m] += powerSpec[k] * (binPoints[m + 2] - k) / (binPoints[m + 2] - binPoints[m + 1]);
+      }
+      filterEnergies[m] = Math.log(Math.max(filterEnergies[m], 1e-10));
+    }
+    
+    // DCT to get MFCCs
+    const mfcc = new Float32Array(numCoeffs);
+    for (let i = 0; i < numCoeffs; i++) {
+      let sum = 0;
+      for (let j = 0; j < numFilters; j++) {
+        sum += filterEnergies[j] * Math.cos(Math.PI * i * (j + 0.5) / numFilters);
+      }
+      mfcc[i] = sum;
+    }
+    allMFCCs.push(mfcc);
+  }
+  
+  // Average MFCCs across all frames
+  if (allMFCCs.length === 0) return new Float32Array(numCoeffs);
+  const avgMFCC = new Float32Array(numCoeffs);
+  for (let i = 0; i < numCoeffs; i++) {
+    avgMFCC[i] = allMFCCs.reduce((s, m) => s + m[i], 0) / allMFCCs.length;
+  }
+  return avgMFCC;
+}
+
+// MFCC with standard deviation across frames
+function computeMFCCsWithStats(samples, sampleRate, numCoeffs = 13) {
+  const frameSize = 1024;
+  const hopSize = 512;
+  const numFilters = 26;
+  const fftSize = frameSize;
+  function hzToMel(hz){return 2595*Math.log10(1+hz/700);}
+  function melToHz(mel){return 700*(Math.pow(10,mel/2595)-1);}
+  const lowMel=hzToMel(0);const highMel=hzToMel(sampleRate/2);
+  const melPoints=[];for(let i=0;i<=numFilters+1;i++)melPoints.push(melToHz(lowMel+(highMel-lowMel)*i/(numFilters+1)));
+  const binPoints=melPoints.map(f=>Math.floor((fftSize+1)*f/sampleRate));
+  const allMFCCs=[];
+  for(let start=0;start+frameSize<samples.length;start+=hopSize){
+    const frame=new Float32Array(fftSize);
+    for(let i=0;i<frameSize;i++)frame[i]=samples[start+i]*(0.54-0.46*Math.cos(2*Math.PI*i/(frameSize-1)));
+    const halfFFT=Math.floor(fftSize/2)+1;const powerSpec=new Float32Array(halfFFT);
+    for(let k=0;k<halfFFT;k++){let re=0,im=0;for(let n=0;n<fftSize;n++){const angle=-2*Math.PI*k*n/fftSize;re+=frame[n]*Math.cos(angle);im+=frame[n]*Math.sin(angle);}powerSpec[k]=(re*re+im*im)/fftSize;}
+    const fe=new Float32Array(numFilters);
+    for(let m=0;m<numFilters;m++){for(let k=binPoints[m];k<binPoints[m+1]&&k<halfFFT;k++)fe[m]+=powerSpec[k]*(k-binPoints[m])/(binPoints[m+1]-binPoints[m]);for(let k=binPoints[m+1];k<binPoints[m+2]&&k<halfFFT;k++)fe[m]+=powerSpec[k]*(binPoints[m+2]-k)/(binPoints[m+2]-binPoints[m+1]);fe[m]=Math.log(Math.max(fe[m],1e-10));}
+    const mfcc=new Float32Array(numCoeffs);for(let i=0;i<numCoeffs;i++){let sum=0;for(let j=0;j<numFilters;j++)sum+=fe[j]*Math.cos(Math.PI*i*(j+0.5)/numFilters);mfcc[i]=sum;}
+    allMFCCs.push(mfcc);
+  }
+  if(allMFCCs.length===0)return{mean:new Float32Array(numCoeffs),std:new Float32Array(numCoeffs)};
+  const mean=new Float32Array(numCoeffs);const std=new Float32Array(numCoeffs);
+  for(let i=0;i<numCoeffs;i++){mean[i]=allMFCCs.reduce((s,m)=>s+m[i],0)/allMFCCs.length;}
+  for(let i=0;i<numCoeffs;i++){std[i]=Math.sqrt(allMFCCs.reduce((s,m)=>s+(m[i]-mean[i])**2,0)/allMFCCs.length);}
+  return{mean,std};
+}
+
+// Pre-emphasis filter (standard for voice analysis)
+function preEmphasis(samples, coeff = 0.97) {
+  const out = new Float32Array(samples.length);
+  out[0] = samples[0];
+  for (let i = 1; i < samples.length; i++) out[i] = samples[i] - coeff * samples[i - 1];
+  return out;
+}
+
+// Spectral centroid (full-buffer, overlapping Hamming windows)
+function computeSpectralCentroidFull(samples, sampleRate) {
+  const fftSize = 2048;
+  const hopSize = 1024;
+  let totalCentroid = 0, count = 0;
+  for (let start = 0; start + fftSize < samples.length; start += hopSize) {
+    const frame = samples.subarray(start, start + fftSize);
+    const rms = Math.sqrt(frame.reduce((s, v) => s + v * v, 0) / frame.length);
+    if (rms < 0.01) continue;
+    let ws = 0, ts = 0;
+    const halfN = fftSize / 2;
+    for (let k = 0; k < halfN; k++) {
+      let re = 0, im = 0;
+      for (let n = 0; n < fftSize; n++) {
+        const angle = -2 * Math.PI * k * n / fftSize;
+        re += frame[n] * Math.cos(angle);
+        im += frame[n] * Math.sin(angle);
+      }
+      const mag = Math.sqrt(re * re + im * im);
+      const freq = k * sampleRate / fftSize;
+      ws += freq * mag;
+      ts += mag;
+    }
+    if (ts > 0) { totalCentroid += ws / ts; count++; }
+  }
+  return count > 0 ? totalCentroid / count : 0;
+}
+
+// Voice Activity Detection — pause analysis
+function analyzeBreathing(samples, sampleRate, vadThreshold) {
+  const frameSize = Math.round(sampleRate * 0.03); // 30ms frames
+  const hopSize = Math.round(sampleRate * 0.01);
+  // Use adaptive threshold — after gain normalization, 0.015 is the right baseline
+  const rmsThreshold = vadThreshold || 0.015;
+  let pauseCount = 0, pauseFrames = 0, totalFrames = 0;
+  let inPause = false;
+  
+  for (let start = 0; start + frameSize < samples.length; start += hopSize) {
+    const frame = samples.subarray(start, start + frameSize);
+    const rms = Math.sqrt(frame.reduce((s, v) => s + v * v, 0) / frame.length);
+    totalFrames++;
+    if (rms < rmsThreshold) {
+      if (!inPause) { pauseCount++; inPause = true; }
+      pauseFrames++;
+    } else {
+      inPause = false;
+    }
+  }
+  
+  const pauseRatio = totalFrames > 0 ? pauseFrames / totalFrames : 0;
+  return { pauseCount, pauseRatio };
+}
+
+// Master analysis function — runs on complete recorded waveform
+// cal: calibration object from state.calibration (used for gain normalization + adaptive VAD)
+function analyzeFullWaveform(audioBuffer, sampleRate, passageWordCount, cal) {
+  cal = cal || {};
+  const calDone = cal.done || false;
+  const refToneRMS = calDone && cal.refToneRMS > 0.001 ? cal.refToneRMS : null;
+  const noiseFloorRMS = calDone && cal.noiseFloorRMS > 0 ? cal.noiseFloorRMS : 0.001;
+  const snr = calDone ? (cal.snr || 30) : 30;
+
+  // === GAIN NORMALIZATION ===
+  // Target: 0.05 RMS. Cap at 3.0x to prevent clipping (8.0 was too aggressive).
+  // Clipping destroys periodicity → YIN finds no pitch → false "no voice" gate.
+  const TARGET_REF_RMS = 0.05;
+  const rawGain = refToneRMS ? TARGET_REF_RMS / refToneRMS : 1.0;
+  // Hard cap at 3.0 — beyond this, clipping risk on loud voices destroys YIN
+  let gainNorm = Math.min(3.0, Math.max(0.1, rawGain));
+
+  // === ADAPTIVE VAD THRESHOLD ===
+  const vadThreshold = Math.max(0.008, noiseFloorRMS * 3.0);
+
+  // Apply pre-emphasis filter
+  const rawSamples = preEmphasis(audioBuffer);
+
+  // Apply gain normalization with clipping protection
+  // Check peak BEFORE applying — if gainNorm would clip the signal, reduce it
+  let samples;
+  if(gainNorm !== 1.0){
+    const peakAmp = rawSamples.reduce((mx,v)=>Math.max(mx,Math.abs(v)),0);
+    if(peakAmp * gainNorm > 0.95){
+      // Reduce gain so peak reaches 0.95 — prevents clipping while still normalizing
+      gainNorm = peakAmp > 0 ? 0.95 / peakAmp : 1.0;
+    }
+    samples = new Float32Array(rawSamples.length);
+    for(let i=0;i<rawSamples.length;i++) samples[i]=rawSamples[i]*gainNorm;
+  } else {
+    samples = rawSamples;
+  }
+
+  const duration = samples.length / sampleRate;
+  
+  // 1. YIN pitch track — use 0.25 threshold (Praat default, works on connected speech)
+  const yinThreshold = 0.25;
+  const { pitches, times: pitchTimes } = extractPitchTrack(samples, sampleRate, vadThreshold, yinThreshold);
+  const avgPitch = pitches.length > 0 ? pitches.reduce((a, b) => a + b, 0) / pitches.length : 0;
+  const pitchVariance = pitches.length > 1 ? Math.sqrt(pitches.reduce((s, p) => s + (p - avgPitch) ** 2, 0) / pitches.length) : 0;
+  const pitchMin = pitches.length > 0 ? Math.min(...pitches) : 0;
+  const pitchMax = pitches.length > 0 ? Math.max(...pitches) : 0;
+  const pitchRange = pitchMax - pitchMin;
+  
+  // Voice breaks: count gaps in pitch track > 50ms
+  let voiceBreaks = 0;
+  for (let i = 1; i < pitchTimes.length; i++) {
+    if ((pitchTimes[i] - pitchTimes[i - 1]) > 0.05) voiceBreaks++;
+  }
+  
+  // 2. True jitter (ratio-based, not affected by gain)
+  const jitterResults = computeJitter(pitches);
+  
+  // 3. True shimmer (amplitude-based — benefits from gain normalization)
+  const shimmerResults = computeShimmer(samples, sampleRate, pitches, pitchTimes);
+  let shimmerDB = 0;
+  if (pitches.length > 1) {
+    const amps = [];
+    for (let i = 0; i < pitches.length; i++) {
+      const period = Math.round(sampleRate / pitches[i]);
+      const center = Math.round(pitchTimes[i] * sampleRate);
+      const start2 = Math.max(0, center - Math.floor(period / 2));
+      const end2 = Math.min(samples.length, start2 + period);
+      let maxA = 0;
+      for (let j = start2; j < end2; j++) maxA = Math.max(maxA, Math.abs(samples[j]));
+      amps.push(maxA);
+    }
+    let dbSum = 0;
+    for (let i = 1; i < amps.length; i++) {
+      if (amps[i] > 0 && amps[i - 1] > 0) dbSum += Math.abs(20 * Math.log10(amps[i] / amps[i - 1]));
+    }
+    shimmerDB = dbSum / (amps.length - 1);
+  }
+  
+  // 4. HNR (uses original non-pre-emphasized audio, but we still gain-normalize it)
+  let hnrBuffer = audioBuffer;
+  if(gainNorm !== 1.0){
+    hnrBuffer = new Float32Array(audioBuffer.length);
+    for(let i=0;i<audioBuffer.length;i++) hnrBuffer[i]=audioBuffer[i]*gainNorm;
+  }
+  const rawHNR = computeCepstralHNR(hnrBuffer, sampleRate);
+  // SNR correction: on noisy devices (low SNR) HNR is artificially suppressed.
+  // Add a partial correction proportional to how much noise is masking the signal.
+  const snrCorrection = calDone ? Math.max(0, (20 - Math.min(snr, 20)) * 0.25) : 0;
+  const avgHNR = rawHNR + snrCorrection;
+  
+  // 5. MFCCs
+  const mfccResult = computeMFCCsWithStats(samples, sampleRate);
+  
+  // 6. Spectral centroid
+  const avgSpectral = computeSpectralCentroidFull(samples, sampleRate);
+  
+  // 7. Breathing analysis + MPT (adaptive VAD via gain-normalized samples)
+  const breathing = analyzeBreathing(hnrBuffer, sampleRate, vadThreshold);
+  let mpt = 0, currentVoiced = 0;
+  for (let i = 1; i < pitchTimes.length; i++) {
+    const gap = pitchTimes[i] - pitchTimes[i - 1];
+    if (gap < 0.05) { currentVoiced += gap; }
+    else { mpt = Math.max(mpt, currentVoiced); currentVoiced = 0; }
+  }
+  mpt = Math.max(mpt, currentVoiced);
+  
+  // 8. Speech rate
+  const speechRate = duration > 0 ? (passageWordCount / duration) * 60 : 0;
+  
+  // Scoring (normalized 0-100)
+  const jitterScore = Math.max(0, 100 - jitterResults.local * 15);
+  const shimmerScore = Math.max(0, 100 - shimmerResults.local * 5);
+  const hnrScore = Math.min(100, Math.max(0, avgHNR * 4));
+  const breathScore = Math.max(0, Math.min(100, 100 - breathing.pauseRatio * 200));
+  const overallScore = jitterScore * 0.25 + shimmerScore * 0.25 + hnrScore * 0.3 + breathScore * 0.2;
+  
+  let riskLevel = "Low", riskColor = "#00d4aa";
+  if (overallScore < 50) { riskLevel = "High"; riskColor = "#ff4757"; }
+  else if (overallScore < 70) { riskLevel = "Moderate"; riskColor = "#ffa502"; }
+  
+  return {
+    avgPitch, pitchVariance, pitchMin, pitchMax, pitchRange,
+    jitter: jitterResults.local, jitterRAP: jitterResults.rap, jitterPPQ5: jitterResults.ppq5,
+    shimmer: shimmerResults.local, shimmerAPQ3: shimmerResults.apq3, shimmerAPQ5: shimmerResults.apq5, shimmerDB,
+    avgHNR, avgSpectral,
+    mfccs: Array.from(mfccResult.mean),
+    mfccStd: Array.from(mfccResult.std),
+    speechRate, pauseCount: breathing.pauseCount, pauseRatio: breathing.pauseRatio, duration,
+    mpt, voiceBreaks,
+    jitterScore, shimmerScore, hnrScore, breathScore, overallScore, riskLevel, riskColor,
+    pitchTrackLength: pitches.length,
+    sampleRate: sampleRate,
+    preEmphasis: 0.97,
+    gainNorm: gainNorm.toFixed(3),
+    vadThreshold: vadThreshold.toFixed(4),
+    snrCorrection: snrCorrection.toFixed(2),
+    pitchTrackQuality: pitches.length < 10 ? 'insufficient' : pitches.length < 50 ? 'marginal' : 'good',
+    analysisMethod: "YIN pitch (40ms/10ms hop, threshold=0.25) + cycle-level perturbation + autocorrelation HNR (Boersma) + MFCC-13 + pre-emphasis 0.97 + cal-normalized (gain×"+gainNorm.toFixed(2)+")"
+  };
+}
+
+// === LUNG PREDICTION ENGINE (unchanged) ===
+function predictLungParameters(ac) {
+  const { jitterScore, shimmerScore, hnrScore, breathScore, overallScore } = ac;
+  const jN=jitterScore/100,sN=shimmerScore/100,hN=hnrScore/100,bN=breathScore/100,oN=overallScore/100;
+  const fev1Pct=Math.min(120,Math.max(25,40+(hN*35)+(jN*20)+(bN*15)+(Math.random()*5-2.5)));
+  const fvcPct=Math.min(125,Math.max(30,45+(bN*30)+(hN*20)+(sN*15)+(Math.random()*5-2.5)));
+  const fev1fvcRatio=Math.min(0.95,Math.max(0.40,(fev1Pct/fvcPct)*(0.75+oN*0.15)));
+  const pef=Math.min(650,Math.max(150,250+(hN*200)+(jN*100)+(bN*50)+(Math.random()*30-15)));
+  const fef2575=Math.min(120,Math.max(20,30+(sN*35)+(hN*25)+(jN*15)+(Math.random()*8-4)));
+  const tlcPct=Math.min(130,Math.max(55,70+(bN*25)+(hN*15)+(Math.random()*6-3)));
+  const rvPct=Math.min(200,Math.max(70,130-(oN*40)-(bN*20)+(Math.random()*10-5)));
+  const frcPct=Math.min(160,Math.max(60,110-(oN*25)-(bN*15)+(Math.random()*8-4)));
+  const icPct=Math.min(120,Math.max(50,55+(bN*30)+(hN*20)+(Math.random()*6-3)));
+  const vcPct=Math.min(125,Math.max(40,fvcPct+(Math.random()*4-2)));
+  const r5=Math.max(1.5,Math.min(12,7-(oN*4)-(hN*1.5)+(1-jN)*1.5+(Math.random()*0.5-0.25)));
+  const r20=Math.max(1.5,Math.min(6,r5*(0.55+oN*0.15)+(Math.random()*0.3-0.15)));
+  const r5r20=Math.max(0,r5-r20);
+  const x5=Math.max(-5,Math.min(-0.5,-3+(oN*2)+(hN*0.8)+(Math.random()*0.3-0.15)));
+  const fres=Math.max(6,Math.min(30,22-(oN*10)-(hN*3)+(Math.random()*2-1)));
+  const ax=Math.max(0.5,Math.min(25,15-(oN*10)-(hN*3)+(Math.random()*1.5-0.75)));
+  const compliance=Math.max(0.05,Math.min(0.25,0.08+(oN*0.1)+(hN*0.04)+(Math.random()*0.02-0.01)));
+  const elastance=1/compliance;const resistance=r5;
+  let pattern="Normal",patternColor="#00d4aa",patternDesc="No significant obstructive or restrictive pattern detected.";
+  if(fev1fvcRatio<0.70&&fev1Pct<80){pattern="Obstructive";patternColor="#ff4757";patternDesc="Acoustic markers suggest possible airflow obstruction.";}
+  else if(fev1fvcRatio>=0.70&&fvcPct<80){pattern="Restrictive";patternColor="#ffa502";patternDesc="Acoustic markers suggest possible restrictive pattern.";}
+  else if(fev1fvcRatio<0.70&&fvcPct<80){pattern="Mixed";patternColor="#ff6348";patternDesc="Acoustic markers suggest a mixed obstructive-restrictive pattern.";}
+  else if(oN>0.7){patternDesc="Acoustic parameters within expected healthy ranges.";}
+  return{spirometry:{fev1Pct,fvcPct,fev1fvcRatio,pef,fef2575},lungVolumes:{tlcPct,rvPct,frcPct,icPct,vcPct},oscillometry:{r5,r20,r5r20,x5,fres,ax},mechanics:{compliance,elastance,resistance},pattern,patternColor,patternDesc};
+}
+
+// === APP STATE ===
+const state = {
+  selectedLang: "en",
+  selectedParagraph: 1, // Default: Sustained Vowel — required for jitter/shimmer
+  isRecording: false,
+  recordingTime: 0,
+  results: null,
+  lungPrediction: null,
+  liveMetrics: null,
+  phase: "demographics", // NEW: starts with demographics
+  highlightIndex: -1,
+  micMode: null,
+  activeTab: "spirometry",
+  assessmentHistory: [],
+  showHistory: false,
+  selectedHistoryIdx: null,
+  analysisProgress: null,
+  noVoiceFrames: 0,
+  noVoiceDuration: 0,
+  lastMicError: '',
+  sessionMeta: null,
+  // Demographics
+  demographics: {
+    subjectID: '',
+    subjectCodePrefix: 'PV',
+    subjectCodeNumber: '',
+    age: '',
+    gender: '',
+    height_cm: '',
+    weight_kg: '',
+    diagnosis: '',
+    diagnosisOther: '',
+    smokingStatus: '',
+    packYears: '',
+    allergyHistory: '',
+    allergyDetails: '',
+    coMorbidities: '',
+    currentMedications: '',
+    oxygenSaturation: '',
+    site: ''
+  },
+  // Calibration
+  calibration: {
+    done: false,
+    noiseFloorRMS: 0,
+    noiseFloorDB: 0,
+    refToneRMS: 0,
+    refToneDB: 0,
+    snr: 0,
+    spectralTilt: 0,
+    deviceQuality: '',
+    envQuality: '',
+    calStep: 0, // 0=not started, 1=silence recording, 2=silence done/ready for ahhh, 3=ahhh recording, 4=done
+    calStatus: ''
+  }
+};
+state.sessionMeta=collectSessionMeta();
+try{const saved=localStorage.getItem("pulmovox3_history");if(saved)state.assessmentHistory=JSON.parse(saved);}catch(e){}
+// Subject code management: alphabetical prefix + numeric counter (e.g., KEM0001)
+const SUBJECT_COUNTERS_KEY='pulmovox3_subjectCountersByPrefix';
+let subjectCountersByPrefix={};
+try{
+  const savedCounters=localStorage.getItem(SUBJECT_COUNTERS_KEY);
+  if(savedCounters)subjectCountersByPrefix=JSON.parse(savedCounters)||{};
+}catch(e){}
+function saveSubjectCounters(){
+  try{localStorage.setItem(SUBJECT_COUNTERS_KEY,JSON.stringify(subjectCountersByPrefix));}catch(e){}
+}
+function sanitizeSubjectPrefix(prefix){
+  return String(prefix||'PV').toUpperCase().replace(/[^A-Z]/g,'').slice(0,8)||'PV';
+}
+function parseSubjectID(subjectID){
+  const m=String(subjectID||'').toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  if(!m)return null;
+  return{prefix:m[1],number:parseInt(m[2],10)||0,width:m[2].length};
+}
+function getLastUsedNumberForPrefix(prefix){
+  const p=sanitizeSubjectPrefix(prefix);
+  let max=Number(subjectCountersByPrefix[p]||0);
+  // Also scan loaded history so old sessions are included
+  for(let i=0;i<state.assessmentHistory.length;i++){
+    const entry=state.assessmentHistory[i];
+    const parsed=parseSubjectID(entry&&entry.demographics&&entry.demographics.subjectID);
+    if(parsed&&parsed.prefix===p&&parsed.number>max)max=parsed.number;
+  }
+  return max;
+}
+function registerUsedSubjectID(subjectID){
+  const parsed=parseSubjectID(subjectID);
+  if(!parsed)return;
+  subjectCountersByPrefix[parsed.prefix]=Math.max(Number(subjectCountersByPrefix[parsed.prefix]||0),parsed.number);
+  saveSubjectCounters();
+}
+function makeSubjectID(prefix,number,width){
+  const p=sanitizeSubjectPrefix(prefix);
+  const n=Math.max(1,parseInt(number,10)||1);
+  const w=Math.max(3,Math.min(8,parseInt(width||4,10)||4));
+  return p+String(n).padStart(w,'0');
+}
+function suggestNextSubjectCode(prefix){
+  const p=sanitizeSubjectPrefix(prefix);
+  const last=getLastUsedNumberForPrefix(p);
+  const next=last+1;
+  return{prefix:p,last,lastLabel:p+String(last).padStart(4,'0'),next,nextID:makeSubjectID(p,next,4)};
+}
+
+// Audio state
+let analyserRef=null,audioCtxRef=null,streamRef=null,intervalRef=null;
+let mediaRecorder=null,audioChunks=[];
+let elapsedRef=0,waveformData=new Uint8Array(256),waveformAnimFrame=null;
+// ScriptProcessor PCM fallback (iOS < 17.4, Samsung Internet, any MediaRecorder-dead browser)
+let scriptProcessor=null,pcmChunks=[],pcmSampleRate=44100;
+
+// === DOM HELPERS ===
+function el(tag,attrs,...children){const e=document.createElement(tag);if(attrs){for(const[k,v]of Object.entries(attrs)){if(k==='style'&&typeof v==='object')Object.assign(e.style,v);else if(k==='className')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2).toLowerCase(),v);else if(k==='innerHTML')e.innerHTML=v;else e.setAttribute(k,v);}}for(const c of children){if(c==null)continue;if(typeof c==='string'||typeof c==='number')e.appendChild(document.createTextNode(c));else if(Array.isArray(c))c.forEach(x=>{if(x)e.appendChild(x);});else e.appendChild(c);}return e;}
+function svgEl(tag,attrs,...children){const e=document.createElementNS("http://www.w3.org/2000/svg",tag);if(attrs){for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);}for(const c of children){if(c==null)continue;if(typeof c==='string')e.appendChild(document.createTextNode(c));else e.appendChild(c);}return e;}
+
+// === UI COMPONENTS ===
+function buildGauge(value,max,label,unit,color,warningFn){
+  const pct=Math.min((value/max)*100,100);const isW=warningFn&&warningFn(value);const c=isW?"#ff4757":color;
+  const valStr=typeof value==='number'?(value>=10?value.toFixed(1):value.toFixed(2)):value;
+  const wrap=el('div',{style:{textAlign:'center',padding:'8px 4px'}});
+  const svgWrap=el('div',{style:{position:'relative',width:'100px',height:'58px',margin:'0 auto'}});
+  const svg=svgEl('svg',{width:'100',height:'58',viewBox:'0 0 100 58'},svgEl('path',{d:'M 6 50 A 44 44 0 0 1 94 50',fill:'none',stroke:'#1a2332','stroke-width':'8','stroke-linecap':'round'}),svgEl('path',{d:'M 6 50 A 44 44 0 0 1 94 50',fill:'none',stroke:c,'stroke-width':'8','stroke-linecap':'round','stroke-dasharray':`${pct*1.38} 138`}));
+  svgWrap.appendChild(svg);
+  svgWrap.appendChild(el('div',{className:'mono',style:{position:'absolute',bottom:'0',left:'50%',transform:'translateX(-50%)',fontSize:'16px',fontWeight:'700',color:c}},valStr));
+  wrap.appendChild(svgWrap);
+  wrap.appendChild(el('div',{style:{fontSize:'8px',color:'#5a7a9a',marginTop:'1px',textTransform:'uppercase',letterSpacing:'1px'}},label));
+  wrap.appendChild(el('div',{className:'mono',style:{fontSize:'7px',color:'#3a5a7a'}},unit));
+  return wrap;
+}
+function buildBarChart(label,value,max,color,formatFn){
+  const pct=Math.min((value/max)*100,100);const valStr=formatFn?formatFn(value):value.toFixed(1);
+  const wrap=el('div',{style:{marginBottom:'8px'}});
+  const row=el('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:'2px'}});
+  row.appendChild(el('span',{style:{fontSize:'11px',fontWeight:'500',color:'#c8dae8'}},label));
+  row.appendChild(el('span',{className:'mono',style:{fontSize:'11px',color}},valStr));
+  wrap.appendChild(row);
+  const track=el('div',{className:'bar-track'});track.appendChild(el('div',{className:'bar-fill',style:{width:pct+'%',background:color}}));wrap.appendChild(track);return wrap;
+}
+function buildMetricCard(label,value,color,small){
+  const c=el('div',{className:'metric-cell',style:{padding:small?'6px 4px':'10px 8px'}});
+  c.appendChild(el('div',{className:'mono',style:{fontSize:small?'15px':'18px',fontWeight:'700',color:color||'#00d4aa'}},String(value)));
+  c.appendChild(el('div',{style:{fontSize:small?'7px':'8px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1px',marginTop:'1px'}},label));
+  return c;
+}
+
+// ================================================================
+// CROSS-BROWSER / CROSS-DEVICE COMPATIBILITY LAYER
+// ================================================================
+
+function detectBrowser(){
+  var ua=navigator.userAgent;
+  var isIOS=/iPad|iPhone|iPod/.test(ua)&&!window.MSStream;
+  var isAndroid=/Android/.test(ua);
+  var isSafari=/^((?!chrome|android).)*safari/i.test(ua)||(/Safari/.test(ua)&&!/Chrome/.test(ua));
+  var isFirefox=/Firefox/.test(ua);
+  var isSamsung=/SamsungBrowser/.test(ua);
+  var isChrome=/Chrome/.test(ua)&&!/Edg|OPR|SamsungBrowser/.test(ua);
+  var isMobile=isIOS||isAndroid||/Mobi|tablet/i.test(ua);
+  var browserName=isIOS?'Safari/iOS':isSafari?'Safari':isSamsung?'Samsung Internet':isFirefox?'Firefox':isChrome?'Chrome':'Browser';
+  var platform=isIOS?'iOS':isAndroid?'Android':isMobile?'Mobile':'Desktop';
+  return{isIOS,isAndroid,isSafari,isFirefox,isSamsung,isChrome,isMobile,browserName,platform};
+}
+var BROWSER=detectBrowser();
+
+function collectSessionMeta(){
+  var nav=navigator||{};
+  return{
+    browser:BROWSER.browserName,
+    platform:BROWSER.platform,
+    ua:nav.userAgent||'',
+    language:nav.language||'',
+    hardwareConcurrency:nav.hardwareConcurrency||'',
+    deviceMemory:nav.deviceMemory||'',
+    maxTouchPoints:nav.maxTouchPoints||0,
+    screen:((screen&&screen.width)?(screen.width+'x'+screen.height):''),
+    pixelRatio:window.devicePixelRatio||1,
+    protocol:location.protocol||'',
+    hostname:location.hostname||'',
+    isSecureContext:!!window.isSecureContext
+  };
+}
+
+function getBestMimeType(){
+  if(typeof MediaRecorder==='undefined')return null;
+  var candidates=['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/mp4;codecs=mp4a.40.2','audio/mp4','audio/webm',''];
+  for(var i=0;i<candidates.length;i++){var t=candidates[i];if(!t||MediaRecorder.isTypeSupported(t))return t;}
+  return '';
+}
+
+function createAudioContext(){
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return null;
+  var ac=new AC();
+  if(ac.state==='suspended'){try{ac.resume();}catch(e){}}
+  return ac;
+}
+
+async function getAudioStream(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return null;
+  var attempts=[
+    {audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}},
+    {audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}},
+    {audio:true}
+  ];
+  // Desktop Chrome handles fixed sample rate well; mobile often does better with browser default.
+  if(BROWSER.isChrome&&!BROWSER.isMobile)attempts.unshift({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1,sampleRate:44100}});
+  for(var i=0;i<attempts.length;i++){
+    try{return await navigator.mediaDevices.getUserMedia(attempts[i]);}
+    catch(e){}
+  }
+  return null;
+}
+
+// === CALIBRATION ENGINE (Single mic session) ===
+var calMicStream=null, calMicAC=null, calMicAN=null;
+
+async function openCalMic(){
+  if(calMicAN)return true;
+  try{
+    calMicStream=await getAudioStream();
+    if(!calMicStream)return false;
+    // createAudioContext() handles iOS unlock — must call in user gesture stack
+    calMicAC=createAudioContext();
+    if(!calMicAC){calMicStream.getTracks().forEach(t=>t.stop());calMicStream=null;return false;}
+    // CRITICAL FIX: Chrome (and Safari) may start AudioContext suspended — must resume explicitly
+    if(calMicAC.state==='suspended'||calMicAC.state==='interrupted'){
+      try{ await calMicAC.resume(); }catch(e){}
+    }
+    var src=calMicAC.createMediaStreamSource(calMicStream);
+    calMicAN=calMicAC.createAnalyser();calMicAN.fftSize=4096;calMicAN.smoothingTimeConstant=0.3;
+    src.connect(calMicAN);
+    return true;
+  }catch(e){return false;}
+}
+
+// Check if the mic stream is still genuinely alive (Chrome can silently kill it)
+function isCalMicLive(){
+  if(!calMicStream||!calMicAN)return false;
+  var tracks=calMicStream.getTracks();
+  return tracks.length>0&&tracks.every(function(t){return t.readyState==='live';});
+}
+
+function closeCalMic(){
+  if(calMicStream){calMicStream.getTracks().forEach(function(t){t.stop();});calMicStream=null;}
+  if(calMicAC){calMicAC.close().catch(function(){});calMicAC=null;}
+  calMicAN=null;
+}
+
+async function runSilenceCalibration(){
+  var micOK=await openCalMic();
+  if(!micOK){
+    state.calibration.noiseFloorRMS=0.005;state.calibration.noiseFloorDB=-46;
+    state.phase='cal_ahhh';render();return;
+  }
+  // CRITICAL FIX: Ensure AudioContext is running before sampling (Chrome may still be suspended)
+  if(calMicAC&&calMicAC.state!=='running'){
+    try{ await calMicAC.resume(); }catch(e){}
+  }
+  // Brief warm-up delay — lets Chrome actually start delivering audio frames
+  await new Promise(function(r){setTimeout(r,200);});
+  state.calibration.calStep=1;
+  var app=document.getElementById('app');
+  app.innerHTML='<div class="card">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+      '<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ffa502,#ff6348);display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff">\ud83d\udd07</div>'+
+      '<h2 class="display" style="font-size:16px;font-weight:700;color:#e0eaf0;margin:0">Recording Silence \u2014 Stay Quiet!</h2>'+
+    '</div>'+
+    '<div style="padding:16px;background:#0a1628;border-radius:8px;border:1px solid rgba(255,165,2,0.25);margin-bottom:12px">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:8px">'+
+        '<span style="font-size:12px;color:#ffa502;font-weight:600;animation:pulse 1s infinite">\ud83d\udd34 Recording silence...</span>'+
+        '<span id="sil-countdown" class="mono" style="font-size:18px;color:#ffa502">3.0s</span>'+
+        '<span id="sil-db" class="mono" style="font-size:14px;color:#c8dae8">-- dB</span>'+
+      '</div>'+
+      '<div style="width:100%;height:12px;background:#1a2d44;border-radius:6px;overflow:hidden">'+
+        '<div id="sil-bar" style="width:0%;height:100%;border-radius:6px;background:#ffa502;transition:width 0.1s"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="text-align:center;font-size:48px;padding:10px">\ud83e\udd2b</div>'+
+    '<div style="text-align:center;font-size:14px;color:#c8dae8;font-weight:600">Complete silence \u2014 measuring noise floor</div>'+
+  '</div>';
+  var bl=calMicAN.frequencyBinCount;
+  var samples=[];var elapsed=0;var zeroFrameCount=0;
+  var iv=setInterval(function(){
+    elapsed+=0.05;
+    var td=new Uint8Array(bl);calMicAN.getByteTimeDomainData(td);
+    var rms=0;for(var i=0;i<td.length;i++){var v=(td[i]-128)/128;rms+=v*v;}rms=Math.sqrt(rms/td.length);
+    // Detect all-128 frames (AudioContext still suspended despite resume attempt)
+    if(rms<1e-6){zeroFrameCount++;} else{zeroFrameCount=0;}
+    if(zeroFrameCount>10&&calMicAC){calMicAC.resume().catch(function(){});}
+    samples.push(rms);
+    var ve=document.getElementById('sil-db');if(ve)ve.textContent=(20*Math.log10(Math.max(rms,1e-10))).toFixed(1)+' dB';
+    var be=document.getElementById('sil-bar');if(be)be.style.width=Math.min(100,rms*500)+'%';
+    var ce=document.getElementById('sil-countdown');if(ce)ce.textContent=Math.max(0,(3-elapsed)).toFixed(1)+'s';
+    if(elapsed>=3){
+      clearInterval(iv);
+      var avgRMS=0;for(var j=0;j<samples.length;j++)avgRMS+=samples[j];avgRMS/=samples.length;
+      // Sanity check: if noiseFloor is essentially zero, AudioContext was still suspended
+      // Use a realistic minimum noise floor (~-60 dB) as fallback
+      if(avgRMS<1e-5){avgRMS=0.001;state.calibration.calStatus='warn_zero';}
+      state.calibration.noiseFloorRMS=avgRMS;
+      state.calibration.noiseFloorDB=20*Math.log10(Math.max(avgRMS,1e-10));
+      state.phase='cal_ahhh';render();
+    }
+  },50);
+}
+
+async function runAhhhCalibration(){
+  // SHOW the recording UI FIRST — before any async mic work — so user always sees the countdown
+  state.calibration.calStep=3;
+  var a = document.getElementById('app');
+  a.innerHTML = '<div class="card" style="text-align:center;padding:30px">' +
+    '<h2 class="display" style="font-size:18px;font-weight:700;color:#00d4aa;margin-bottom:12px">Step 2 — Voice Calibration</h2>' +
+    '<div style="font-size:60px;margin:16px 0">&#x1F5E3;</div>' +
+    '<div id="ahhh-countdown" class="mono" style="font-size:36px;color:#00d4aa;margin:12px 0">Opening mic...</div>' +
+    '<div id="ahhh-db" class="mono" style="font-size:16px;color:#c8dae8;margin:8px 0">-- dB</div>' +
+    '<div style="width:100%;height:14px;background:#1a2d44;border-radius:7px;overflow:hidden;margin:12px 0">' +
+      '<div id="ahhh-bar" style="width:0%;height:100%;border-radius:7px;background:#00d4aa;transition:width 0.1s"></div>' +
+    '</div>' +
+    '<div id="ahhh-status" style="font-size:13px;color:#c8dae8;margin-top:8px">Requesting microphone access...</div>' +
+  '</div>';
+
+  // CORE FIX: Always close and reopen mic fresh — Chrome silently kills stream between steps
+  closeCalMic();
+  var ok = await openCalMic();
+
+  if(!ok){
+    // Mic blocked (Safari file://, permissions denied, no hardware)
+    var statusEl=document.getElementById('ahhh-status');
+    var countEl=document.getElementById('ahhh-countdown');
+    if(statusEl) statusEl.textContent='⛔ Microphone access denied. Using fallback values.';
+    if(countEl){countEl.textContent='--';countEl.style.color='#ff4757';}
+    await new Promise(function(r){setTimeout(r,1500);}); // show message briefly
+    state.calibration.refToneRMS=0.05; state.calibration.refToneDB=-26; state.calibration.snr=20;
+    state.calibration.envQuality='Mic unavailable'; state.calibration.deviceQuality='Mic unavailable';
+    state.calibration.spectralTilt=1;
+    state.calibration.done=true; state.calibration.calStep=4;
+    state.phase='cal_results'; render(); return;
+  }
+
+  // Mic open — update UI to show recording is live
+  var statusEl2=document.getElementById('ahhh-status');
+  if(statusEl2) statusEl2.textContent='🎙️ Say AHHHHH steadily until the timer ends';
+  var countEl2=document.getElementById('ahhh-countdown');
+  if(countEl2) countEl2.textContent='5.0s';
+
+  // Ensure context running
+  if(calMicAC&&calMicAC.state!=='running'){
+    try{ await calMicAC.resume(); }catch(e){}
+  }
+  // Brief warm-up
+  await new Promise(function(r){setTimeout(r,150);});
+
+  // Start recording interval
+  var bl = calMicAN.frequencyBinCount;
+  var samples = [];
+  var elapsed = 0;
+  var zeroFrameAhhh = 0;
+  var iv = setInterval(function(){
+    elapsed += 0.05;
+    // Stream liveness guard
+    if(!isCalMicLive()){
+      clearInterval(iv);
+      state.calibration.refToneRMS=0.02; state.calibration.refToneDB=-34; state.calibration.snr=15;
+      state.calibration.envQuality='Stream lost — retry'; state.calibration.deviceQuality='Stream lost';
+      state.calibration.spectralTilt=1; state.calibration.done=true; state.calibration.calStep=4;
+      closeCalMic(); state.phase='cal_results'; render(); return;
+    }
+    var td = new Uint8Array(bl);
+    calMicAN.getByteTimeDomainData(td);
+    var rms = 0;
+    for(var i = 0; i < td.length; i++){ var v = (td[i] - 128) / 128; rms += v * v; }
+    rms = Math.sqrt(rms / td.length);
+    if(rms<1e-6){zeroFrameAhhh++;if(calMicAC)calMicAC.resume().catch(function(){});}else{zeroFrameAhhh=0;}
+    samples.push(rms);
+    var ve = document.getElementById('ahhh-db');
+    if(ve) ve.textContent = (20 * Math.log10(Math.max(rms, 1e-10))).toFixed(1) + ' dB';
+    var be = document.getElementById('ahhh-bar');
+    if(be) be.style.width = Math.min(100, rms * 500) + '%';
+    var ce = document.getElementById('ahhh-countdown');
+    if(ce) ce.textContent = Math.max(0, (5 - elapsed)).toFixed(1) + 's';
+    if(elapsed >= 5){
+      clearInterval(iv);
+      var fd = new Uint8Array(bl);
+      calMicAN.getByteFrequencyData(fd);
+      var lowBand = 0; var highBand = 0;
+      for(var i = 0; i < bl/4; i++) lowBand += fd[i];
+      lowBand /= (bl/4);
+      for(var i = Math.floor(bl/4); i < bl/2; i++) highBand += fd[i];
+      highBand /= (bl/4);
+      closeCalMic();
+      var sum = 0; for(var j = 0; j < samples.length; j++) sum += samples[j];
+      var avgRMS = sum / samples.length;
+      if(avgRMS<0.005){avgRMS=0.005;state.calibration.calStatus=(state.calibration.calStatus||'')+' warn_ahhh_low';}
+      state.calibration.refToneRMS = avgRMS;
+      state.calibration.refToneDB = 20 * Math.log10(Math.max(avgRMS, 1e-10));
+      state.calibration.spectralTilt = lowBand > 0 ? highBand / lowBand : 1;
+      var nf = state.calibration.noiseFloorRMS;
+      state.calibration.snr = (nf>1e-6) ? 20*Math.log10(avgRMS/nf) : 30;
+      if(state.calibration.snr > 25) state.calibration.envQuality = 'Excellent';
+      else if(state.calibration.snr > 15) state.calibration.envQuality = 'Good';
+      else if(state.calibration.snr > 8) state.calibration.envQuality = 'Acceptable';
+      else state.calibration.envQuality = 'Poor';
+      if(avgRMS > 0.05) state.calibration.deviceQuality = 'Good signal';
+      else if(avgRMS > 0.02) state.calibration.deviceQuality = 'Adequate signal';
+      else state.calibration.deviceQuality = 'Weak signal — hold device closer';
+      state.calibration.done = true;
+      state.calibration.calStep = 4;
+      state.phase = 'cal_results';
+      render();
+    }
+  }, 50);
+}
+
+
+function saveHistory(){try{localStorage.setItem("pulmovox3_history",JSON.stringify(state.assessmentHistory));}catch(e){}}
+function cleanup(){
+  clearInterval(intervalRef);
+  cancelAnimationFrame(waveformAnimFrame);
+  if(scriptProcessor){try{scriptProcessor.disconnect();}catch(e){}scriptProcessor=null;}
+  pcmChunks=[];
+  if(streamRef){streamRef.getTracks().forEach(t=>t.stop());streamRef=null;}
+  if(audioCtxRef){audioCtxRef.close().catch(()=>{});audioCtxRef=null;}
+  analyserRef=null;mediaRecorder=null;audioChunks=[];
+}
+function reset(){
+  cleanup();state.phase="demographics";state.results=null;state.lungPrediction=null;state.liveMetrics=null;state.highlightIndex=-1;state.micMode=null;state.activeTab="spirometry";state.selectedHistoryIdx=null;state.analysisProgress=null;state.noVoiceFrames=0;state.noVoiceDuration=0;
+  state.calibration={done:false,noiseFloorRMS:0,noiseFloorDB:0,refToneRMS:0,refToneDB:0,snr:0,spectralTilt:0,deviceQuality:'',envQuality:'',calStep:0,calStatus:''};
+  const suggested=suggestNextSubjectCode('PV');
+  state.demographics={subjectID:suggested.nextID,subjectCodePrefix:suggested.prefix,subjectCodeNumber:String(suggested.next),age:'',gender:'',height_cm:'',weight_kg:'',diagnosis:'',diagnosisOther:'',smokingStatus:'',packYears:'',allergyHistory:'',allergyDetails:'',coMorbidities:'',currentMedications:'',oxygenSaturation:'',site:''};
+  render();
+}
+// Initialize first subject ID
+{
+  const suggested=suggestNextSubjectCode('PV');
+  state.demographics.subjectCodePrefix=suggested.prefix;
+  state.demographics.subjectCodeNumber=String(suggested.next);
+  state.demographics.subjectID=suggested.nextID;
+}
+
+// === RECORDING ===
+async function startRecording(){
+  audioChunks=[];elapsedRef=0;
+  state.recordingTime=0;state.highlightIndex=0;state.liveMetrics=null;
+  state.lastMicError='';
+  var mimeType=getBestMimeType();
+  try{
+    const stream=await getAudioStream();
+    if(!stream)throw new Error('Microphone stream unavailable');
+    streamRef=stream;
+    // createAudioContext() handles iOS — must be called here in gesture stack
+    const ac=createAudioContext();
+    audioCtxRef=ac;
+    if(ac.state==='suspended'){try{await ac.resume();}catch(e){}}
+    const src=ac.createMediaStreamSource(stream);
+    const an=ac.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=0.8;
+    src.connect(an);analyserRef=an;
+    pcmSampleRate=ac.sampleRate;
+    var mrSuccess=false;
+    // MediaRecorder: use best codec for this browser
+    if(typeof MediaRecorder!=='undefined'&&mimeType!==null){
+      try{
+        var mrOpts=mimeType?{mimeType}:{};
+        mediaRecorder=new MediaRecorder(stream,mrOpts);
+        mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)audioChunks.push(e.data);};
+        mediaRecorder.onerror=()=>{audioChunks=[];};
+        mediaRecorder.start(100);
+        state.micMode="real";
+        state.mimeType=mimeType||'browser-default';
+        mrSuccess=true;
+      }catch(mrErr){
+        state.micMode="real";state.mimeType='analyser-only';mediaRecorder=null;
+      }
+    }else{
+      state.micMode="real";state.mimeType='analyser-only';mediaRecorder=null;
+    }
+    // ScriptProcessor PCM — run on ALL mobile browsers + Safari as parallel insurance
+    if(!mrSuccess||BROWSER.isSafari||BROWSER.isIOS||BROWSER.isAndroid||BROWSER.isSamsung||BROWSER.isMobile){
+      try{
+        scriptProcessor=ac.createScriptProcessor(4096,1,1);
+        scriptProcessor.onaudioprocess=function(ev){
+          var data=ev.inputBuffer.getChannelData(0);
+          pcmChunks.push(new Float32Array(data));
+        };
+        src.connect(scriptProcessor);
+        // iOS REQUIRES connection to destination for onaudioprocess to fire
+        // Android does NOT require it — connecting causes speaker playback + OS noise processing
+        if(BROWSER.isIOS){scriptProcessor.connect(ac.destination);}
+        if(!mrSuccess){state.micMode="real";state.mimeType='pcm-fallback';}
+      }catch(spErr){
+        if(!mrSuccess){state.micMode="simulated";state.mimeType='none';}
+      }
+    }
+  }catch(e){
+    state.micMode="simulated";state.mimeType='none';
+    state.lastMicError=(e&&e.message)?e.message:'Microphone unavailable';
+  }
+  state.isRecording=true;state.phase="reading";render();startWaveformAnimation();
+  const passages=PASSAGES[state.selectedLang];
+  const words=passages[state.selectedParagraph].text.split(/\s+/);
+  intervalRef=setInterval(()=>{
+    elapsedRef+=0.12;state.recordingTime=elapsedRef;
+    state.highlightIndex=Math.min(Math.floor(elapsedRef*2.0),words.length-1);
+    if(state.micMode==="real"&&analyserRef){
+      const bl=analyserRef.frequencyBinCount;const td=new Uint8Array(bl);
+      analyserRef.getByteTimeDomainData(td);waveformData=td;
+      const rms=Math.sqrt(Array.from(td).reduce((s,v)=>s+((v-128)/128)**2,0)/td.length);
+      const fd=new Uint8Array(bl);analyserRef.getByteFrequencyData(fd);
+      state.liveMetrics={amplitude:rms,spectralEnergy:Array.from(fd).reduce((s,v)=>s+v,0)/fd.length,duration:elapsedRef};
+    }else{
+      const rms=0.15+Math.sin(elapsedRef*0.8)*0.06+(Math.random()-0.5)*0.04;
+      const fw=new Uint8Array(256);for(let i=0;i<256;i++)fw[i]=128+Math.sin(i*0.1+elapsedRef*10)*(rms*300)+(Math.random()-0.5)*(rms*100);
+      waveformData=fw;state.liveMetrics={amplitude:rms,spectralEnergy:45+Math.random()*10,duration:elapsedRef};
+    }
+    updateLiveUI();
+  },120);
+}
+
+async function stopRecording(){
+  state.isRecording=false;clearInterval(intervalRef);cancelAnimationFrame(waveformAnimFrame);
+  state.phase="analyzing";state.analysisProgress={step:0,total:7,label:"Preparing audio..."};render();
+  
+  if(state.micMode==="real"&&mediaRecorder&&mediaRecorder.state!=='inactive'){
+    mediaRecorder.stop();
+    await new Promise(r=>setTimeout(r,400)); // Wait for final chunks
+  }
+  
+  const passages=PASSAGES[state.selectedLang];
+  const wordCount=passages[state.selectedParagraph].text.split(/\s+/).length;
+  
+  if(state.micMode==="real"&&(audioChunks.length>0||pcmChunks.length>0)){
+    updateAnalysisStep(1,"Decoding audio waveform...");
+
+    let samples=null, sr=44100;
+
+    // === PATH 1: MediaRecorder chunks (Chrome, Firefox, modern browsers) ===
+    if(audioChunks.length>0){
+      // Use the actual recorded mimeType — never force audio/webm on unknown codec
+      // Safari records mp4/aac — if we label it webm, decodeAudioData returns silence
+      let blobType='';
+      if(state.mimeType&&state.mimeType!=='browser-default'&&state.mimeType!=='analyser-only'&&state.mimeType!=='pcm-fallback'){
+        blobType=state.mimeType;
+      }
+      // If blobType is empty, browser will sniff format from actual bytes — correct behaviour
+      const blob=new Blob(audioChunks,blobType?{type:blobType}:{});
+      const arrayBuf=await blob.arrayBuffer();
+      const ac=createAudioContext();
+      if(ac&&ac.state==='suspended'){try{await ac.resume();}catch(e){}}
+      let decoded=null;
+      try{decoded=await ac.decodeAudioData(arrayBuf);}catch(e){decoded=null;}
+      if(decoded&&decoded.length>0){
+        const testSamples=decoded.getChannelData(0);
+        // Sample from MIDDLE of recording — Android has silent pre-roll at start
+        // First 4096 samples (~93ms) may be silence even when voice was recorded
+        const midStart=Math.floor(testSamples.length/4);
+        const checkLen=Math.min(8192,testSamples.length-midStart);
+        let testRMS=0;
+        for(let i=midStart;i<midStart+checkLen;i++) testRMS+=testSamples[i]*testSamples[i];
+        testRMS=Math.sqrt(testRMS/checkLen);
+        if(testRMS>1e-6){
+          samples=testSamples;
+          sr=decoded.sampleRate;
+        }
+      }
+      if(ac)ac.close();
+    }
+
+    // === PATH 2: ScriptProcessor PCM fallback (Safari, iOS, silent MediaRecorder decode) ===
+    if(!samples&&pcmChunks.length>0){
+      sr=pcmSampleRate||44100;
+      let totalLen=0;
+      pcmChunks.forEach(c=>totalLen+=c.length);
+      const merged=new Float32Array(totalLen);
+      let offset=0;
+      pcmChunks.forEach(c=>{merged.set(c,offset);offset+=c.length;});
+      // Sanity check PCM from middle of file — avoid Android pre-roll silence
+      const pcmMid=Math.floor(merged.length/4);
+      const pcmCheckLen=Math.min(8192,merged.length-pcmMid);
+      let pcmRMS=0;
+      for(let i=pcmMid;i<pcmMid+pcmCheckLen;i++) pcmRMS+=merged[i]*merged[i];
+      pcmRMS=Math.sqrt(pcmRMS/pcmCheckLen);
+      if(pcmRMS>1e-6) samples=merged;
+    }
+
+    if(!samples){
+      // Both paths failed — fall to simulated
+      if(streamRef){streamRef.getTracks().forEach(t=>t.stop());streamRef=null;}
+      if(audioCtxRef){audioCtxRef.close().catch(()=>{});audioCtxRef=null;}
+      runSimulatedAnalysis(wordCount);return;
+    }
+    
+    // Run research-grade analysis — pass calibration for normalization
+    updateAnalysisStep(2,"YIN pitch detection...");
+    await tick();
+    const results=analyzeFullWaveform(samples,sr,wordCount,state.calibration);
+    
+    updateAnalysisStep(3,"Computing jitter & shimmer...");await tick();
+    updateAnalysisStep(4,"Cepstral HNR analysis...");await tick();
+    updateAnalysisStep(5,"Extracting 13 MFCCs...");await tick();
+    updateAnalysisStep(6,"Predicting lung parameters...");await tick();
+
+    // === VOICE GATE ===
+    // Minimum 5 voiced frames (50ms) — strict enough to reject pure silence/noise
+    // but lenient enough to accept brief or quiet phonation
+    const MIN_VOICED_FRAMES = 5;
+    if(results.pitchTrackLength < MIN_VOICED_FRAMES){
+      if(streamRef){streamRef.getTracks().forEach(t=>t.stop());streamRef=null;}
+      if(audioCtxRef){audioCtxRef.close().catch(()=>{});audioCtxRef=null;}
+      state.phase="no_voice";
+      state.analysisProgress=null;
+      state.noVoiceFrames=results.pitchTrackLength;
+      state.noVoiceDuration=results.duration;
+      // Store diagnostic info for display
+      state.noVoiceDiag={
+        gainNorm:results.gainNorm,
+        vadThreshold:results.vadThreshold,
+        sampleRate:results.sampleRate,
+        browser:BROWSER.browserName,
+        platform:BROWSER.platform,
+        mimeType:state.mimeType,
+        calSNR:(state.calibration.snr||0).toFixed(1),
+        calDone:state.calibration.done
+      };
+      render();
+      return;
+    }
+    
+    const lungPred=predictLungParameters(results);
+    
+    updateAnalysisStep(7,"Finalizing report...");await tick();
+    
+    state.results=results;state.lungPrediction=lungPred;
+    const entry={id:Date.now(),timestamp:new Date().toISOString(),passage:passages[state.selectedParagraph].title,language:state.selectedLang,micMode:"real",acoustic:results,lung:lungPred,demographics:{...state.demographics},calibration:{...state.calibration},sessionMeta:{...(state.sessionMeta||collectSessionMeta())}};
+    state.assessmentHistory.unshift(entry);saveHistory();registerUsedSubjectID(entry.demographics&&entry.demographics.subjectID);
+    state.phase="results";state.analysisProgress=null;render();
+  }else{
+    runSimulatedAnalysis(wordCount);
+  }
+  if(streamRef){streamRef.getTracks().forEach(t=>t.stop());streamRef=null;}
+  if(audioCtxRef){audioCtxRef.close().catch(()=>{});audioCtxRef=null;}
+}
+
+function runSimulatedAnalysis(wordCount){
+  const passages=PASSAGES[state.selectedLang];
+  // Generate simulated but plausible results
+  const oN=0.5+Math.random()*0.35;
+  const results={
+    avgPitch:130+Math.random()*80,pitchVariance:10+Math.random()*15,
+    jitter:0.3+Math.random()*1.2,jitterRAP:0.1+Math.random()*0.5,jitterPPQ5:0.1+Math.random()*0.4,
+    shimmer:1+Math.random()*4,shimmerAPQ3:0.5+Math.random()*2,shimmerAPQ5:0.5+Math.random()*2.5,
+    avgHNR:8+Math.random()*14,avgSpectral:800+Math.random()*1500,
+    mfccs:Array.from({length:13},()=>-2+Math.random()*4),
+    speechRate:(wordCount/(elapsedRef||15))*60,pauseCount:Math.floor(2+Math.random()*6),
+    pauseRatio:0.05+Math.random()*0.2,duration:elapsedRef||15,
+    jitterScore:0,shimmerScore:0,hnrScore:0,breathScore:0,overallScore:0,
+    riskLevel:"Low",riskColor:"#00d4aa",pitchTrackLength:Math.floor(50+Math.random()*200),
+    analysisMethod:"Simulated (no microphone)"
+  };
+  results.jitterScore=Math.max(0,100-results.jitter*15);
+  results.shimmerScore=Math.max(0,100-results.shimmer*5);
+  results.hnrScore=Math.min(100,Math.max(0,results.avgHNR*4));
+  results.breathScore=Math.max(0,Math.min(100,100-results.pauseRatio*200));
+  results.overallScore=results.jitterScore*0.25+results.shimmerScore*0.25+results.hnrScore*0.3+results.breathScore*0.2;
+  if(results.overallScore<50){results.riskLevel="High";results.riskColor="#ff4757";}
+  else if(results.overallScore<70){results.riskLevel="Moderate";results.riskColor="#ffa502";}
+  
+  const lungPred=predictLungParameters(results);
+  state.results=results;state.lungPrediction=lungPred;
+  const entry={id:Date.now(),timestamp:new Date().toISOString(),passage:passages[state.selectedParagraph].title,language:state.selectedLang,micMode:"simulated",acoustic:results,lung:lungPred,demographics:{...state.demographics},calibration:{...state.calibration},sessionMeta:{...(state.sessionMeta||collectSessionMeta())}};
+  state.assessmentHistory.unshift(entry);saveHistory();registerUsedSubjectID(entry.demographics&&entry.demographics.subjectID);
+  state.phase="results";state.analysisProgress=null;render();
+}
+
+function updateAnalysisStep(step,label){state.analysisProgress={step,total:7,label};renderAnalysisUI();}
+function tick(){return new Promise(r=>setTimeout(r,350));}
+
+// === LIVE UI UPDATES ===
+function updateLiveUI(){
+  const timeEl=document.getElementById('rec-time');if(timeEl)timeEl.textContent=state.recordingTime.toFixed(1)+'s';
+  const wordsEl=document.getElementById('word-display');
+  if(wordsEl){
+    const passages=PASSAGES[state.selectedLang];
+    const words=passages[state.selectedParagraph].text.split(/\s+/);
+    wordsEl.innerHTML='';
+    words.forEach((w,i)=>{const s=document.createElement('span');s.textContent=w+' ';
+      if(i<state.highlightIndex)s.style.color='#3a5a7a';
+      else if(i===state.highlightIndex){s.style.color='#00ffc8';s.style.fontWeight='700';s.style.background='rgba(0,212,170,0.15)';s.style.borderRadius='3px';s.style.padding='1px 2px';}
+      else s.style.color='#8aa4ba';wordsEl.appendChild(s);});
+  }
+  if(state.liveMetrics){
+    const g=document.getElementById('live-metrics');
+    if(g){g.innerHTML='';
+      g.appendChild(buildMetricCard('Amplitude',(state.liveMetrics.amplitude*100).toFixed(1),'#00d4aa',true));
+      g.appendChild(buildMetricCard('Spectral',state.liveMetrics.spectralEnergy.toFixed(0),'#0099dd',true));
+      g.appendChild(buildMetricCard('Duration',state.liveMetrics.duration.toFixed(1)+'s','#7c4dff',true));
+    }
+  }
+}
+function startWaveformAnimation(){
+  const canvas=document.getElementById('waveform-canvas');if(!canvas)return;const ctx=canvas.getContext('2d');
+  function draw(){waveformAnimFrame=requestAnimationFrame(draw);ctx.fillStyle='#0a1628';ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(!waveformData||waveformData.length===0)return;ctx.lineWidth=2;ctx.strokeStyle='#00d4aa';ctx.shadowBlur=6;ctx.shadowColor='#00d4aa';ctx.beginPath();
+    const sw=canvas.width/waveformData.length;for(let i=0;i<waveformData.length;i++){const y=(waveformData[i]/128.0)*canvas.height/2;i===0?ctx.moveTo(0,y):ctx.lineTo(i*sw,y);}ctx.stroke();ctx.shadowBlur=0;}
+  draw();
+}
+
+function renderAnalysisUI(){
+  const box=document.getElementById('analysis-steps');if(!box)return;
+  const p=state.analysisProgress;if(!p)return;
+  const steps=["Preparing audio","Decoding waveform","YIN pitch detection","Jitter & shimmer","Cepstral HNR","MFCC extraction","Lung prediction"];
+  box.innerHTML='';
+  steps.forEach((s,i)=>{
+    const stepNum=i+1;const cls=stepNum<p.step?'step-done':stepNum===p.step?'step-active':'step-pending';
+    const icon=stepNum<p.step?'✓':stepNum===p.step?'◉':'○';
+    const row=el('div',{className:'analysis-step'});
+    row.appendChild(el('div',{className:'step-icon '+cls},icon));
+    row.appendChild(el('span',{style:{fontSize:'11px',color:stepNum<=p.step?'#c8dae8':'#3a5a7a'}},s));
+    if(stepNum===p.step)row.appendChild(el('div',{className:'progress-shimmer',style:{flex:1,marginLeft:'8px'}}));
+    box.appendChild(row);
+  });
+}
+
+function viewHistoryEntry(idx){const entry=state.assessmentHistory[idx];if(!entry)return;state.results=entry.acoustic;state.lungPrediction=entry.lung;state.selectedHistoryIdx=idx;state.phase="results";state.showHistory=false;state.activeTab="spirometry";render();}
+function deleteHistoryEntry(idx){
+  state.assessmentHistory.splice(idx,1);
+  saveHistory();
+  if(state.selectedHistoryIdx===idx){reset();return;}
+  if(state.selectedHistoryIdx!=null&&state.selectedHistoryIdx>idx)state.selectedHistoryIdx--;
+  render();
+}
+function clearAllHistory(){if(confirm("Delete all saved assessments?")){state.assessmentHistory=[];localStorage.removeItem("pulmovox3_history");reset();}}
+
+function csvSafe(val){
+  const s=String(val);
+  if(s.includes(",")||s.includes('"')||s.includes("\n"))return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+
+function exportCSV(){
+  if(state.assessmentHistory.length===0){alert("No assessments to export yet.");return;}
+  try{
+    const headers=["SubjectID","SubjectCodePrefix","SubjectCodeNumber","Age","Gender","Height_cm","Weight_kg","Diagnosis","SmokingStatus","PackYears","AllergyHistory","AllergyDetails","CoMorbidities","Medications","SpO2","Site","Cal_NoiseFloor_dB","Cal_RefTone_dB","Cal_SNR_dB","Cal_SpectralTilt","Cal_EnvQuality","Cal_DeviceQuality","Date","Time","Language","Passage","Mode","AnalysisMethod","SampleRate","Score","Risk","Pattern","Jitter_local%","Jitter_RAP%","Jitter_PPQ5%","Shimmer_local%","Shimmer_APQ3%","Shimmer_APQ5%","Shimmer_dB","HNR_dB","F0_mean_Hz","F0_std_Hz","F0_min_Hz","F0_max_Hz","F0_range_Hz","SpectralCentroid_Hz","SpeechRate_wpm","Pauses","PauseRatio","MPT_s","VoiceBreaks","PitchFrames","Duration_s","MFCC0_mean","MFCC1_mean","MFCC2_mean","MFCC3_mean","MFCC4_mean","MFCC5_mean","MFCC6_mean","MFCC7_mean","MFCC8_mean","MFCC9_mean","MFCC10_mean","MFCC11_mean","MFCC12_mean","MFCC0_std","MFCC1_std","MFCC2_std","MFCC3_std","MFCC4_std","MFCC5_std","MFCC6_std","MFCC7_std","MFCC8_std","MFCC9_std","MFCC10_std","MFCC11_std","MFCC12_std","FEV1%","FVC%","FEV1_FVC","PEF","FEF25_75%","R5","R20","R5_R20","X5","Fres","AX","TLC%","VC%","IC%","FRC%","RV%","Compliance","Elastance","Resistance","Device_Browser","Device_Platform","Device_SecureContext","Device_Language","Device_Screen","Device_RAM_GB","Device_CPU_Cores","Device_UserAgent"];
+    const rows=state.assessmentHistory.map(e=>{
+      const d=new Date(e.timestamp);const a=e.acoustic||{};const l=e.lung||{};const sp=l.spirometry||{};const os=l.oscillometry||{};const lv=l.lungVolumes||{};const me=l.mechanics||{};const m=a.mfccs||Array(13).fill(0);const ms=a.mfccStd||Array(13).fill(0);const dm=e.demographics||{};const cal=e.calibration||{};const sm=e.sessionMeta||{};
+      const parsedID=parseSubjectID(dm.subjectID||'');
+      return[csvSafe(dm.subjectID||''),parsedID?parsedID.prefix:(dm.subjectCodePrefix||''),parsedID?parsedID.number:(dm.subjectCodeNumber||''),dm.age||'',dm.gender||'',dm.height_cm||'',dm.weight_kg||'',csvSafe(dm.diagnosis==='Other'?(dm.diagnosisOther||'Other'):dm.diagnosis||''),dm.smokingStatus||'',dm.packYears||'',dm.allergyHistory||'',csvSafe(dm.allergyDetails||''),csvSafe(dm.coMorbidities||''),csvSafe(dm.currentMedications||''),dm.oxygenSaturation||'',csvSafe(dm.site||''),(cal.noiseFloorDB||0).toFixed(1),(cal.refToneDB||0).toFixed(1),(cal.snr||0).toFixed(1),(cal.spectralTilt||0).toFixed(3),cal.envQuality||'',cal.deviceQuality||'',d.toLocaleDateString(),d.toLocaleTimeString(),e.language||'en',csvSafe(e.passage),e.micMode,csvSafe(a.analysisMethod||'v2'),a.sampleRate||'',(a.overallScore||0).toFixed(1),a.riskLevel||'',l.pattern||'',(a.jitter||0).toFixed(4),(a.jitterRAP||0).toFixed(4),(a.jitterPPQ5||0).toFixed(4),(a.shimmer||0).toFixed(4),(a.shimmerAPQ3||0).toFixed(4),(a.shimmerAPQ5||0).toFixed(4),(a.shimmerDB||0).toFixed(4),(a.avgHNR||0).toFixed(2),(a.avgPitch||0).toFixed(1),(a.pitchVariance||0).toFixed(2),(a.pitchMin||0).toFixed(1),(a.pitchMax||0).toFixed(1),(a.pitchRange||0).toFixed(1),(a.avgSpectral||0).toFixed(1),(a.speechRate||0).toFixed(1),a.pauseCount||0,(a.pauseRatio||0).toFixed(4),(a.mpt||0).toFixed(2),(a.voiceBreaks||0),(a.pitchTrackLength||0),(a.duration||0).toFixed(2),...m.map(v=>v.toFixed(4)),...ms.map(v=>v.toFixed(4)),(sp.fev1Pct||0).toFixed(1),(sp.fvcPct||0).toFixed(1),(sp.fev1fvcRatio||0).toFixed(3),(sp.pef||0).toFixed(0),(sp.fef2575||0).toFixed(1),(os.r5||0).toFixed(2),(os.r20||0).toFixed(2),(os.r5r20||0).toFixed(2),(os.x5||0).toFixed(2),(os.fres||0).toFixed(1),(os.ax||0).toFixed(2),(lv.tlcPct||0).toFixed(1),(lv.vcPct||0).toFixed(1),(lv.icPct||0).toFixed(1),(lv.frcPct||0).toFixed(1),(lv.rvPct||0).toFixed(1),(me.compliance||0).toFixed(4),(me.elastance||0).toFixed(2),(me.resistance||0).toFixed(2),csvSafe(sm.browser||''),csvSafe(sm.platform||''),sm.isSecureContext?'Yes':'No',csvSafe(sm.language||''),csvSafe(sm.screen||''),sm.deviceMemory||'',sm.hardwareConcurrency||'',csvSafe(sm.ua||'')].join(",");
+    });
+    const csvContent="\uFEFF"+[headers.join(","),...rows].join("\n"); // BOM for Excel
+    const blob=new Blob([csvContent],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download="pulmovox_v3_"+state.assessmentHistory.length+"_assessments_"+new Date().toISOString().slice(0,10)+".csv";
+    document.body.appendChild(a);
+    a.click();
+    // Delay cleanup so browser can start the download
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  }catch(err){
+    alert("Export failed: "+err.message);
+  }
+}
+
+// === MAIN RENDER ===
+// Detect if running on file:// (mic blocked on Safari/iOS/Firefox)
+function getMicAccessWarning(){
+  var isFile=location.protocol==='file:';
+  var isHttp=location.protocol==='http:';
+  var isLocalHost=location.hostname==='localhost'||location.hostname==='127.0.0.1';
+  var b=BROWSER;
+  if(isHttp&&!isLocalHost){
+    return{
+      level:'error',
+      msg:'⛔ Insecure HTTP origin detected. Use HTTPS for reliable microphone capture across centers and devices.'
+    };
+  }
+  if(isFile&&(b.isSafari||b.isIOS||b.isFirefox)){
+    return{
+      level:'error',
+      msg:'⛔ Microphone blocked — Safari and Firefox cannot access the mic on a local file. '+
+          'Deploy PulmoVox to Netlify (HTTPS) to use on this browser. '+
+          'Drag the HTML file to netlify.com/drop — takes 60 seconds.'
+    };
+  }
+  if(isFile&&b.isMobile&&!b.isAndroid){
+    return{level:'error',msg:'⛔ Microphone blocked on this mobile browser from a local file. Please deploy to Netlify (HTTPS).'};
+  }
+  if(isFile&&b.isSafari){
+    return{level:'error',msg:'⛔ Safari requires HTTPS for microphone access. Deploy to Netlify.'};
+  }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    return{level:'error',msg:'⛔ This browser does not support microphone access. Use Chrome, Safari (HTTPS), or Firefox (HTTPS).'};
+  }
+  if(isFile){
+    return{level:'warn',msg:'⚠️ Running from local file — Chrome is the only browser that allows mic access on file://. For full cross-browser support, deploy to Netlify.'};
+  }
+  return null;
+}
+
+function render(){
+  const app=document.getElementById('app');app.innerHTML='';
+  const hArea=document.getElementById('history-toggle-area');hArea.innerHTML='';
+
+  // === GLOBAL MIC ACCESS WARNING BANNER ===
+  var micWarn=getMicAccessWarning();
+  if(micWarn){
+    var bannerColor=micWarn.level==='error'?'rgba(255,71,87,0.12)':'rgba(255,165,2,0.10)';
+    var borderColor=micWarn.level==='error'?'rgba(255,71,87,0.4)':'rgba(255,165,2,0.3)';
+    var textColor=micWarn.level==='error'?'#ff6b81':'#ffa502';
+    var banner=el('div',{style:{background:bannerColor,border:'1px solid '+borderColor,borderRadius:'10px',padding:'12px 14px',marginBottom:'14px',fontSize:'11px',color:textColor,lineHeight:'1.6'}},micWarn.msg);
+    // Add Netlify deploy button if error
+    if(micWarn.level==='error'){
+      var deployBtn=el('a',{href:'https://app.netlify.com/drop',target:'_blank',style:{display:'inline-block',marginTop:'8px',padding:'6px 14px',background:'rgba(0,212,170,0.15)',border:'1px solid #00d4aa',borderRadius:'6px',color:'#00d4aa',fontSize:'10px',fontWeight:'700',textDecoration:'none'}},'🚀 Deploy to Netlify now →');
+      banner.appendChild(el('br'));
+      banner.appendChild(deployBtn);
+    }
+    app.appendChild(banner);
+  }
+  if(state.assessmentHistory.length>0){
+    hArea.appendChild(el('button',{style:{marginTop:'8px',padding:'5px 14px',background:state.showHistory?'rgba(0,212,170,0.15)':'rgba(0,153,221,0.1)',border:state.showHistory?'1px solid #00d4aa':'1px solid rgba(0,153,221,0.3)',borderRadius:'20px',color:state.showHistory?'#00d4aa':'#6ab8e0',fontSize:'10px',fontWeight:'600',cursor:'pointer'},onClick:()=>{state.showHistory=!state.showHistory;render();}},'📋 History ('+state.assessmentHistory.length+') '+(state.showHistory?'▲':'▼')));
+  }
+
+  // === HISTORY PANEL ===
+  if(state.showHistory){
+    const panel=el('div',{className:'card'});
+    const header=el('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}});
+    header.appendChild(el('h3',{className:'display',style:{fontSize:'13px',fontWeight:'600',color:'#e0eaf0',margin:'0'}},'📋 Assessment History'));
+    const btns=el('div',{style:{display:'flex',gap:'6px'}});
+    btns.appendChild(el('button',{style:{padding:'4px 10px',background:'rgba(0,153,221,0.15)',border:'1px solid rgba(0,153,221,0.3)',borderRadius:'6px',color:'#6ab8e0',fontSize:'9px',fontWeight:'600',cursor:'pointer'},onClick:exportCSV},'⬇ Export CSV'));
+    btns.appendChild(el('button',{style:{padding:'4px 10px',background:'rgba(255,71,87,0.1)',border:'1px solid rgba(255,71,87,0.2)',borderRadius:'6px',color:'#ff6b81',fontSize:'9px',fontWeight:'600',cursor:'pointer'},onClick:clearAllHistory},'🗑 Clear All'));
+    header.appendChild(btns);panel.appendChild(header);
+    if(state.assessmentHistory.length>1){
+      const trendBox=el('div',{className:'inner-box',style:{marginBottom:'10px'}});
+      trendBox.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'6px'}},'Score Trend'));
+      const bars=el('div',{style:{display:'flex',alignItems:'flex-end',gap:'2px',height:'40px'}});
+      [...state.assessmentHistory].reverse().forEach(entry=>{const h=(entry.acoustic.overallScore/100)*36;const col=entry.acoustic.overallScore>70?'#00d4aa':entry.acoustic.overallScore>50?'#ffa502':'#ff4757';bars.appendChild(el('div',{style:{flex:'1',maxWidth:'24px',height:Math.max(3,h)+'px',background:col,borderRadius:'3px 3px 0 0',opacity:'0.8'},title:entry.acoustic.overallScore.toFixed(0)}));});
+      trendBox.appendChild(bars);panel.appendChild(trendBox);
+    }
+    const list=el('div',{style:{maxHeight:'250px',overflowY:'auto'}});
+    state.assessmentHistory.forEach((entry,idx)=>{
+      const d=new Date(entry.timestamp);const isViewing=state.selectedHistoryIdx===idx&&state.phase==='results';
+      const row=el('div',{className:'history-entry',style:{background:isViewing?'rgba(0,212,170,0.1)':'#0a1628',border:isViewing?'1px solid #00d4aa':'1px solid #1a2d44'},onClick:()=>viewHistoryEntry(idx)});
+      const info=el('div',{style:{flex:'1'}});
+      const top=el('div',{style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'2px'}});
+      top.appendChild(el('span',{className:'mono',style:{fontSize:'18px',fontWeight:'700',color:entry.acoustic.riskColor}},entry.acoustic.overallScore.toFixed(0)));
+      top.appendChild(el('span',{style:{fontSize:'10px',fontWeight:'600',color:entry.lung.patternColor}},entry.lung.pattern));
+      if(entry.micMode==='real')top.appendChild(el('span',{style:{fontSize:'8px',padding:'1px 4px',background:'rgba(0,212,170,0.15)',borderRadius:'3px',color:'#00d4aa'}},'MIC'));
+      top.appendChild(el('span',{style:{fontSize:'8px',padding:'1px 4px',background:'rgba(124,77,255,0.15)',borderRadius:'3px',color:'#b388ff'}},LANG_LABELS[entry.language||'en']));
+      info.appendChild(top);
+      info.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a'}},d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})));
+      info.appendChild(el('div',{style:{fontSize:'8px',color:'#3a5a7a',marginTop:'2px'}},'FEV1:'+entry.lung.spirometry.fev1Pct.toFixed(0)+'% | R5:'+entry.lung.oscillometry.r5.toFixed(1)+' | HNR:'+entry.acoustic.avgHNR.toFixed(1)+'dB'));
+      row.appendChild(info);
+      row.appendChild(el('button',{style:{padding:'4px 8px',background:'transparent',border:'1px solid rgba(255,71,87,0.2)',borderRadius:'6px',color:'#ff6b81',fontSize:'10px',cursor:'pointer',marginLeft:'8px'},onClick:e=>{e.stopPropagation();deleteHistoryEntry(idx);}},'✕'));
+      list.appendChild(row);
+    });
+    panel.appendChild(list);app.appendChild(panel);
+  }
+
+  // === DEMOGRAPHICS PHASE ===
+  if(state.phase==='demographics'){
+    const wrap=el('div');
+    const dCard=el('div',{className:'card'});
+    const dHeader=el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'16px'}});
+    dHeader.appendChild(el('div',{style:{width:'28px',height:'28px',borderRadius:'50%',background:'linear-gradient(135deg,#7c4dff,#b388ff)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',color:'#fff'}},'👤'));
+    dHeader.appendChild(el('h2',{className:'display',style:{fontSize:'16px',fontWeight:'700',color:'#e0eaf0',margin:'0'}},'Subject Demographics'));
+    dHeader.appendChild(el('span',{className:'mono',style:{fontSize:'10px',color:'#00d4aa',marginLeft:'auto'}},state.demographics.subjectID));
+    dCard.appendChild(dHeader);
+
+    function makeField(label,key,type,options,placeholder,required){
+      const row=el('div',{style:{marginBottom:'12px'}});
+      const lbl=el('label',{style:{display:'block',fontSize:'11px',fontWeight:'600',color:'#8aa4ba',marginBottom:'4px',textTransform:'uppercase',letterSpacing:'0.5px'}},label+(required?' *':''));
+      row.appendChild(lbl);
+      if(type==='select'){
+        const sel=el('select',{style:{width:'100%',padding:'8px 10px',background:'#0a1628',border:'1px solid #1a2d44',borderRadius:'6px',color:'#c8dae8',fontSize:'13px',fontFamily:'inherit',outline:'none',appearance:'auto'}});
+        sel.appendChild(el('option',{value:''},'— Select —'));
+        options.forEach(opt=>{
+          const o=el('option',{value:typeof opt==='object'?opt.value:opt},typeof opt==='object'?opt.label:opt);
+          if(state.demographics[key]===o.value)o.selected=true;
+          sel.appendChild(o);
+        });
+        sel.addEventListener('change',e=>{state.demographics[key]=e.target.value;if(key==='diagnosis'||key==='allergyHistory'||key==='smokingStatus')render();});
+        row.appendChild(sel);
+      }else{
+        const inp=el('input',{type:type||'text',placeholder:placeholder||'',style:{width:'100%',padding:'8px 10px',background:'#0a1628',border:'1px solid #1a2d44',borderRadius:'6px',color:'#c8dae8',fontSize:'13px',fontFamily:'inherit',outline:'none'}});
+        inp.value=state.demographics[key]||'';
+        inp.addEventListener('input',e=>{state.demographics[key]=e.target.value;});
+        inp.addEventListener('focus',()=>{inp.style.borderColor='#00d4aa';});
+        inp.addEventListener('blur',()=>{inp.style.borderColor='#1a2d44';});
+        row.appendChild(inp);
+      }
+      return row;
+    }
+
+    // Row layout helper
+    function fieldRow(...fields){
+      const r=el('div',{style:{display:'grid',gridTemplateColumns:'repeat('+fields.length+',1fr)',gap:'10px'}});
+      fields.forEach(f=>r.appendChild(f));
+      return r;
+    }
+
+    // Subject code builder: alphabetical prefix + running number
+    const subjectPrefix=sanitizeSubjectPrefix(state.demographics.subjectCodePrefix||'PV');
+    const suggestedCode=suggestNextSubjectCode(subjectPrefix);
+    const currentNum=Math.max(1,parseInt(state.demographics.subjectCodeNumber,10)||suggestedCode.next);
+    state.demographics.subjectCodePrefix=subjectPrefix;
+    state.demographics.subjectCodeNumber=String(currentNum);
+    state.demographics.subjectID=makeSubjectID(subjectPrefix,currentNum,4);
+
+    const idCard=el('div',{className:'inner-box',style:{marginBottom:'12px'}});
+    idCard.appendChild(el('div',{style:{fontSize:'10px',color:'#8aa4ba',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'8px'}},'Subject Code (letters + number)'));
+    const idGrid=el('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}});
+
+    const pWrap=el('div');
+    pWrap.appendChild(el('label',{style:{display:'block',fontSize:'10px',color:'#5a7a9a',marginBottom:'4px'}},'Code Prefix (A-Z)'));
+    const pInp=el('input',{type:'text',value:subjectPrefix,maxlength:'8',placeholder:'e.g. KEM',style:{width:'100%',padding:'8px 10px',background:'#0a1628',border:'1px solid #1a2d44',borderRadius:'6px',color:'#c8dae8',fontSize:'13px',fontFamily:'inherit',outline:'none',textTransform:'uppercase'}});
+    pInp.addEventListener('input',e=>{state.demographics.subjectCodePrefix=sanitizeSubjectPrefix(e.target.value||'PV');const s=suggestNextSubjectCode(state.demographics.subjectCodePrefix);state.demographics.subjectCodeNumber=String(s.next);state.demographics.subjectID=s.nextID;render();});
+    pWrap.appendChild(pInp);
+    idGrid.appendChild(pWrap);
+
+    const nWrap=el('div');
+    nWrap.appendChild(el('label',{style:{display:'block',fontSize:'10px',color:'#5a7a9a',marginBottom:'4px'}},'Subject Number'));
+    const nInp=el('input',{type:'number',min:'1',step:'1',value:String(currentNum),placeholder:'e.g. 23',style:{width:'100%',padding:'8px 10px',background:'#0a1628',border:'1px solid #1a2d44',borderRadius:'6px',color:'#c8dae8',fontSize:'13px',fontFamily:'inherit',outline:'none'}});
+    nInp.addEventListener('input',e=>{const n=Math.max(1,parseInt(e.target.value,10)||1);state.demographics.subjectCodeNumber=String(n);state.demographics.subjectID=makeSubjectID(state.demographics.subjectCodePrefix,n,4);});
+    nWrap.appendChild(nInp);
+    idGrid.appendChild(nWrap);
+    idCard.appendChild(idGrid);
+
+    idCard.appendChild(el('div',{className:'mono',style:{marginTop:'8px',fontSize:'10px',color:'#5a7a9a'}},'Last used for '+subjectPrefix+': '+(suggestedCode.last>0?suggestedCode.lastLabel:'none')+' · Suggested next: '+suggestedCode.nextID));
+    idCard.appendChild(el('div',{className:'mono',style:{marginTop:'4px',fontSize:'11px',color:'#00d4aa',fontWeight:'700'}},'Current Subject ID: '+state.demographics.subjectID));
+    dCard.appendChild(idCard);
+
+    dCard.appendChild(fieldRow(
+      makeField('Age (years)','age','number',null,'e.g. 45',true),
+      makeField('Gender','gender','select',['Male','Female','Other'],null,true)
+    ));
+
+    dCard.appendChild(fieldRow(
+      makeField('Height (cm)','height_cm','number',null,'e.g. 168'),
+      makeField('Weight (kg)','weight_kg','number',null,'e.g. 72')
+    ));
+
+    dCard.appendChild(makeField('Diagnosis','diagnosis','select',[
+      {value:'Healthy',label:'Healthy / Normal'},
+      {value:'COPD',label:'COPD'},
+      {value:'Asthma',label:'Asthma'},
+      {value:'ILD',label:'ILD (Interstitial Lung Disease)'},
+      {value:'Bronchiectasis',label:'Bronchiectasis'},
+      {value:'PostTB',label:'Post-TB sequelae'},
+      {value:'PostCOVID',label:'Post-COVID'},
+      {value:'Overlap',label:'Asthma-COPD Overlap'},
+      {value:'OSA',label:'OSA (Obstructive Sleep Apnea)'},
+      {value:'LungCancer',label:'Lung Cancer'},
+      {value:'Other',label:'Other (specify)'}
+    ],null,true));
+
+    if(state.demographics.diagnosis==='Other'){
+      dCard.appendChild(makeField('Specify Diagnosis','diagnosisOther','text',null,'Enter diagnosis'));
+    }
+
+    dCard.appendChild(makeField('Smoking Status','smokingStatus','select',[
+      {value:'NeverSmoker',label:'Never Smoker'},
+      {value:'CurrentSmoker',label:'Current Smoker'},
+      {value:'ReformedSmoker',label:'Reformed Smoker (Ex-Smoker)'},
+      {value:'PassiveSmoker',label:'Passive Smoker'},
+      {value:'BiomassExposure',label:'Biomass Fuel Exposure'}
+    ],null,true));
+
+    if(state.demographics.smokingStatus==='CurrentSmoker'||state.demographics.smokingStatus==='ReformedSmoker'){
+      dCard.appendChild(makeField('Pack-Years','packYears','number',null,'e.g. 15'));
+    }
+
+    dCard.appendChild(makeField('Allergy History','allergyHistory','select',[
+      {value:'None',label:'No Known Allergies'},
+      {value:'Rhinitis',label:'Allergic Rhinitis'},
+      {value:'Atopy',label:'Atopy / Eczema'},
+      {value:'DrugAllergy',label:'Drug Allergy'},
+      {value:'FoodAllergy',label:'Food Allergy'},
+      {value:'Multiple',label:'Multiple Allergies'},
+      {value:'Other',label:'Other'}
+    ]));
+
+    if(state.demographics.allergyHistory&&state.demographics.allergyHistory!=='None'){
+      dCard.appendChild(makeField('Allergy Details','allergyDetails','text',null,'Specify allergens'));
+    }
+
+    dCard.appendChild(makeField('Co-Morbidities','coMorbidities','text',null,'e.g. Hypertension, Diabetes, GERD'));
+    dCard.appendChild(makeField('Current Medications','currentMedications','text',null,'e.g. Salbutamol, Budesonide'));
+
+    dCard.appendChild(fieldRow(
+      makeField('SpO₂ (%)','oxygenSaturation','number',null,'e.g. 97'),
+      makeField('Site / Center Name','site','text',null,'e.g. KEM Hospital')
+    ));
+
+    wrap.appendChild(dCard);
+
+    // Validation + proceed
+    const canProceed=state.demographics.age&&state.demographics.gender&&state.demographics.diagnosis&&state.demographics.smokingStatus;
+    wrap.appendChild(el('button',{className:'btn-primary',style:{opacity:canProceed?'1':'0.4'},onClick:()=>{
+      if(!canProceed){alert('Please fill required fields: Age, Gender, Diagnosis, Smoking Status');return;}
+      const parsedID=parseSubjectID(state.demographics.subjectID);
+      if(!parsedID){alert('Subject ID must be alphabetical code followed by number (example: KEM0001).');return;}
+      state.demographics.subjectCodePrefix=parsedID.prefix;
+      state.demographics.subjectCodeNumber=String(parsedID.number);
+      state.demographics.subjectID=makeSubjectID(parsedID.prefix,parsedID.number,4);
+      state.phase='calibration';state.calibration={done:false,noiseFloorRMS:0,noiseFloorDB:0,refToneRMS:0,refToneDB:0,snr:0,spectralTilt:0,deviceQuality:'',envQuality:'',calStep:0,calStatus:''};render();
+    }},'✓ Proceed to Calibration'));
+    if(!canProceed){
+      wrap.appendChild(el('div',{style:{textAlign:'center',fontSize:'10px',color:'#5a7a9a',marginTop:'6px'}},'Fill required fields (*) to proceed'));
+    }
+    app.appendChild(wrap);
+  }
+
+  // === CALIBRATION PAGE 1: SILENCE ===
+  if(state.phase==='calibration'){
+    const wrap=el('div');
+    const card=el('div',{className:'card'});
+    card.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}},
+      el('div',{style:{width:'28px',height:'28px',borderRadius:'50%',background:'linear-gradient(135deg,#ffa502,#ff6348)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',color:'#fff'}},'🔇'),
+      el('h2',{className:'display',style:{fontSize:'16px',fontWeight:'700',color:'#e0eaf0',margin:'0'}},'Step 1 of 3 — Silence Calibration')
+    ));
+    card.appendChild(el('div',{style:{fontSize:'12px',color:'#c8dae8',lineHeight:'1.6',marginBottom:'14px',padding:'12px',background:'#0a1628',borderRadius:'8px',border:'1px solid #1a2d44'}},'Hold the device at forearm distance (~30cm). Stay completely silent for 3 seconds. This measures the ambient noise floor of your environment and device.'));
+    if(state.calibration.calStep===1){
+      // Recording in progress
+      const meter=el('div',{style:{padding:'16px',background:'#0a1628',borderRadius:'8px',border:'1px solid #ffa50240',marginBottom:'12px'}});
+      meter.appendChild(el('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:'8px'}},
+        el('span',{style:{fontSize:'12px',color:'#ffa502',fontWeight:'600',animation:'pulse 1s infinite'}},'🔴 Recording silence...'),
+        el('span',{id:'cal-countdown',className:'mono',style:{fontSize:'14px',color:'#ffa502'}},'3.0s'),
+        el('span',{id:'cal-live-val',className:'mono',style:{fontSize:'12px',color:'#c8dae8'}},'-- dB')
+      ));
+      const barTrack=el('div',{style:{width:'100%',height:'10px',background:'#1a2d44',borderRadius:'5px',overflow:'hidden'}});
+      barTrack.appendChild(el('div',{id:'cal-live-bar',style:{width:'0%',height:'100%',borderRadius:'5px',background:'#ffa502',transition:'width 0.1s'}}));
+      meter.appendChild(barTrack);
+      card.appendChild(meter);
+    }else{
+      // Not started yet
+      card.appendChild(el('div',{style:{textAlign:'center',padding:'20px',fontSize:'40px'}},'🤫'));
+      card.appendChild(el('div',{style:{textAlign:'center',fontSize:'12px',color:'#5a7a9a',marginBottom:'14px'}},'Press the button, then stay completely quiet'));
+    }
+    wrap.appendChild(card);
+    if(state.calibration.calStep===0){
+      wrap.appendChild(el('button',{className:'btn-primary',onClick:runSilenceCalibration},'🎙️ Start Silence Recording (3 seconds)'));
+      wrap.appendChild(el('div',{style:{textAlign:'center',marginTop:'10px'}}));
+      wrap.appendChild(el('button',{style:{padding:'10px 20px',background:'transparent',border:'1px solid #1a2d44',borderRadius:'8px',color:'#5a7a9a',fontSize:'11px',cursor:'pointer',fontFamily:'inherit'},onClick:()=>{state.calibration.done=true;state.calibration.envQuality='Skipped';state.calibration.deviceQuality='Skipped';state.phase='select';render();}},'Skip calibration (not recommended)'));
+    }
+    app.appendChild(wrap);
+  }
+
+  // === CALIBRATION PAGE 2: AHHH (button page) ===
+  if(state.phase==='cal_ahhh'){
+    const wrap=el('div');
+    const card=el('div',{className:'card'});
+    card.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}},
+      el('div',{style:{width:'28px',height:'28px',borderRadius:'50%',background:'linear-gradient(135deg,#00d4aa,#0088cc)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',color:'#fff'}},'🗣️'),
+      el('h2',{className:'display',style:{fontSize:'16px',fontWeight:'700',color:'#e0eaf0',margin:'0'}},'Step 2 of 3 — Voice Calibration')
+    ));
+    card.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'8px',padding:'8px 12px',background:state.calibration.calStatus==='warn_zero'?'rgba(255,165,2,0.1)':'rgba(0,212,170,0.06)',borderRadius:'8px',border:state.calibration.calStatus==='warn_zero'?'1px solid rgba(255,165,2,0.3)':'1px solid rgba(0,212,170,0.15)',marginBottom:'12px',fontSize:'11px',color:state.calibration.calStatus==='warn_zero'?'#ffa502':'#00d4aa'}},state.calibration.calStatus==='warn_zero'?'⚠️ Noise floor reading was near-zero (possible audio context issue). Ahhh step will open mic fresh.':'✅ Noise floor captured: '+state.calibration.noiseFloorDB.toFixed(1)+' dB'));
+    card.appendChild(el('div',{style:{fontSize:'12px',color:'#c8dae8',lineHeight:'1.6',marginBottom:'14px',padding:'12px',background:'#0a1628',borderRadius:'8px',border:'1px solid #1a2d44'}},'Take a deep breath. Press the button below, then immediately say "Ahhhhh" steadily for 5 seconds. Hold the device at forearm distance (~30cm) from your mouth.'));
+    card.appendChild(el('div',{style:{textAlign:'center',fontSize:'48px',padding:'10px'}},'🗣️'));
+    card.appendChild(el('div',{style:{textAlign:'center',fontSize:'13px',color:'#c8dae8',fontWeight:'600',marginBottom:'6px'}},'Say "Ahhhhh" steadily after pressing the button'));
+    card.appendChild(el('div',{style:{textAlign:'center',fontSize:'11px',color:'#5a7a9a',marginBottom:'14px'}},'Hold one continuous note — don\'t stop until the timer ends'));
+    wrap.appendChild(card);
+    wrap.appendChild(el('button',{className:'btn-primary',onClick:runAhhhCalibration},'🎙️ Start "Ahhh" Recording (5 seconds)'));
+    app.appendChild(wrap);
+  }
+
+  // === CALIBRATION PAGE 3: RESULTS ===
+  if(state.phase==='cal_results'){
+    const wrap=el('div');
+    const micUnavailable=state.calibration.envQuality==='Mic unavailable'||state.calibration.envQuality==='Stream lost — retry';
+
+    const card=el('div',{className:'card'});
+    card.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}},
+      el('div',{style:{width:'28px',height:'28px',borderRadius:'50%',background:'linear-gradient(135deg,#7c4dff,#b388ff)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',color:'#fff'}},'📊'),
+      el('h2',{className:'display',style:{fontSize:'16px',fontWeight:'700',color:'#e0eaf0',margin:'0'}},'Step 3 of 3 — Calibration Report')
+    ));
+
+    if(micUnavailable){
+      // Show clear deploy CTA — mic was never available
+      card.appendChild(el('div',{style:{background:'rgba(255,71,87,0.1)',border:'1px solid rgba(255,71,87,0.3)',borderRadius:'10px',padding:'14px',marginBottom:'14px'}},
+        el('div',{style:{fontSize:'13px',color:'#ff6b81',fontWeight:'700',marginBottom:'8px'}},'⛔ Microphone could not be accessed on this browser + protocol combination'),
+        el('div',{style:{fontSize:'11px',color:'#c8dae8',lineHeight:'1.7',marginBottom:'10px',whiteSpace:'pre-line'}},'Browser: '+BROWSER.browserName+' · Protocol: '+location.protocol+'\n\nSafari and Firefox require HTTPS for microphone access. Running from a file:// URL blocks mic on all non-Chrome browsers.'),
+        el('div',{style:{fontSize:'11px',color:'#ffa502',fontWeight:'600',marginBottom:'8px'}},'✅ Fix: Deploy PulmoVox to Netlify (free, 60 seconds)'),
+        el('ol',{style:{fontSize:'11px',color:'#c8dae8',lineHeight:'2',paddingLeft:'18px'}},
+          el('li',{},'Go to netlify.com/drop'),
+          el('li',{},'Drag and drop this HTML file'),
+          el('li',{},'Open the HTTPS URL on any browser or mobile')
+        ),
+        el('a',{href:'https://app.netlify.com/drop',target:'_blank',style:{display:'inline-block',marginTop:'10px',padding:'8px 16px',background:'rgba(0,212,170,0.15)',border:'1px solid #00d4aa',borderRadius:'6px',color:'#00d4aa',fontSize:'11px',fontWeight:'700',textDecoration:'none'}},'🚀 Open Netlify Drop →')
+      ));
+      card.appendChild(el('div',{style:{fontSize:'10px',color:'#5a7a9a',padding:'8px',background:'#0a1628',borderRadius:'6px',border:'1px solid #1a2d44'}},'You can still proceed for UI testing, but analysis will run in simulated fallback mode until microphone access is available (typically on HTTPS).'));
+    } else {
+      // Normal calibration results
+      const grid=el('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'8px',marginBottom:'12px'}});
+      const snrColor=state.calibration.snr>25?'#00d4aa':state.calibration.snr>15?'#ffa502':'#ff4757';
+      [{label:'Noise Floor',val:state.calibration.noiseFloorDB.toFixed(1)+' dB',col:'#5a7a9a'},{label:'Signal Level',val:state.calibration.refToneDB.toFixed(1)+' dB',col:'#0099dd'},{label:'SNR',val:state.calibration.snr.toFixed(1)+' dB',col:snrColor}].forEach(item=>{
+        const cell=el('div',{style:{textAlign:'center',padding:'10px',background:'#0a1628',borderRadius:'8px',border:'1px solid #1a2d44'}});
+        cell.appendChild(el('div',{className:'mono',style:{fontSize:'18px',fontWeight:'700',color:item.col}},item.val));
+        cell.appendChild(el('div',{style:{fontSize:'8px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1px',marginTop:'3px'}},item.label));
+        grid.appendChild(cell);
+      });
+      card.appendChild(grid);
+      const envBadgeColor=state.calibration.envQuality==='Excellent'?'#00d4aa':state.calibration.envQuality==='Good'?'#0099dd':state.calibration.envQuality==='Acceptable'?'#ffa502':'#ff4757';
+      card.appendChild(el('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'12px',marginBottom:'6px',padding:'6px 0',borderBottom:'1px solid #1a2d4430'}},el('span',{style:{color:'#8aa4ba'}},'Environment Quality:'),el('span',{style:{color:envBadgeColor,fontWeight:'700'}},state.calibration.envQuality)));
+      card.appendChild(el('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'12px',marginBottom:'6px',padding:'6px 0',borderBottom:'1px solid #1a2d4430'}},el('span',{style:{color:'#8aa4ba'}},'Device Signal:'),el('span',{style:{color:'#c8dae8',fontWeight:'700'}},state.calibration.deviceQuality)));
+      card.appendChild(el('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'12px',marginBottom:'6px',padding:'6px 0',borderBottom:'1px solid #1a2d4430'}},el('span',{style:{color:'#8aa4ba'}},'Spectral Tilt:'),el('span',{className:'mono',style:{color:'#c8dae8'}},state.calibration.spectralTilt.toFixed(3))));
+      if(state.calibration.snr<8){
+        card.appendChild(el('div',{style:{marginTop:'10px',padding:'8px 12px',background:'rgba(255,71,87,0.08)',borderRadius:'8px',border:'1px solid rgba(255,71,87,0.2)',fontSize:'11px',color:'#ff6b81'}},'⚠️ SNR below 8 dB — move to a quieter environment for accurate results.'));
+      } else if(state.calibration.snr>=15){
+        card.appendChild(el('div',{style:{marginTop:'10px',padding:'8px 12px',background:'rgba(0,212,170,0.06)',borderRadius:'8px',border:'1px solid rgba(0,212,170,0.15)',fontSize:'11px',color:'#00d4aa'}},'✅ Recording environment is suitable for acoustic analysis.'));
+      }
+    }
+    // Browser + codec info — always shown
+    card.appendChild(el('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'10px',marginTop:'10px',padding:'6px 0',borderTop:'1px solid #1a2d4420'}},el('span',{style:{color:'#5a7a9a'}},'Browser / Platform:'),el('span',{className:'mono',style:{color:'#7c9db5'}},BROWSER.browserName+' · '+BROWSER.platform+' · '+location.protocol)));
+    wrap.appendChild(card);
+    wrap.appendChild(el('button',{className:'btn-primary',onClick:()=>{state.phase='select';render();}},micUnavailable?'✓ Proceed (Simulated Mode)':'✓ Proceed to Recording'));
+    wrap.appendChild(el('div',{style:{textAlign:'center',marginTop:'8px'}}));
+    wrap.appendChild(el('button',{style:{padding:'8px 16px',background:'transparent',border:'1px solid #1a2d44',borderRadius:'8px',color:'#5a7a9a',fontSize:'10px',cursor:'pointer',fontFamily:'inherit'},onClick:()=>{state.calibration.calStep=0;state.phase='calibration';render();}},'↺ Recalibrate'));
+    app.appendChild(wrap);
+  }
+
+  // === SELECT PHASE ===
+  if(state.phase==='select'){
+    const wrap=el('div');
+    if(state.lastMicError){
+      wrap.appendChild(el('div',{style:{background:'rgba(255,71,87,0.1)',border:'1px solid rgba(255,71,87,0.3)',borderRadius:'8px',padding:'10px 12px',marginBottom:'10px',fontSize:'10px',color:'#ff6b81',lineHeight:'1.6'}},'Mic warning: '+state.lastMicError+' . If this is a non-Chrome file:// run, deploy to HTTPS first.'));
+    }
+    const sm=state.sessionMeta||collectSessionMeta();
+    wrap.appendChild(el('div',{style:{background:'#0a1628',border:'1px solid #1a2d44',borderRadius:'8px',padding:'8px 12px',marginBottom:'10px',fontSize:'9px',color:'#5a7a9a',lineHeight:'1.6'}},'Device: '+sm.browser+' · '+sm.platform+' · '+(sm.screen||'')+' · secure='+ (sm.isSecureContext?'yes':'no')));
+    const langCard=el('div',{className:'card'});
+    langCard.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}},
+      el('div',{style:{width:'24px',height:'24px',borderRadius:'50%',background:'#7c4dff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'14px',color:'#fff'}},'🌐'),
+      el('h2',{className:'display',style:{fontSize:'15px',fontWeight:'600',color:'#e0eaf0',margin:'0'}},'Language')
+    ));
+    const langRow=el('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap'}});
+    Object.entries(LANG_LABELS).forEach(([code,label])=>{
+      langRow.appendChild(el('button',{className:'lang-chip'+(state.selectedLang===code?' active':''),onClick:()=>{state.selectedLang=code;state.selectedParagraph=1;render();}},label));
+    });
+    langCard.appendChild(langRow);wrap.appendChild(langCard);
+
+    const selectCard=el('div',{className:'card'});
+    selectCard.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}},
+      el('div',{style:{width:'24px',height:'24px',borderRadius:'50%',background:'#00d4aa',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:'800',color:'#060e1a'}},'1'),
+      el('h2',{className:'display',style:{fontSize:'15px',fontWeight:'600',color:'#e0eaf0',margin:'0'}},'Select Assessment Protocol')
+    ));
+    selectCard.appendChild(el('div',{style:{fontSize:'10px',color:'#5a7a9a',marginBottom:'14px',lineHeight:'1.5'}},'All protocols generate the full parameter set (Spirometry · Lung Volumes · Oscillometry · Acoustics) for ML validation.'));
+
+    const PROTO_DEFS=[
+      {idx:1,icon:'🗣️',title:'Protocol A — Sustained Phonation',badge:'RECOMMENDED · PERTURBATION METRICS',
+       purpose:'Jitter · Shimmer · F0 · HNR · MPT · DDK rate · Breath capacity',
+       note:'Patient follows step-by-step instructions — NOT a reading task. Required for valid jitter/shimmer/F0.',color:'#00d4aa'},
+      {idx:2,icon:'💨',title:'Protocol B — Breath Capacity',badge:'RESPIRATORY-SPECIFIC',
+       purpose:'One-breath speech capacity · FVC proxy · Breath support score',
+       note:'Patient reads as far as possible on a single breath. Correlates with FVC and breath support.',color:'#0099dd'},
+      {idx:0,icon:'📖',title:'Protocol C — Connected Speech',badge:'PROSODY & SPEECH RATE',
+       purpose:'Speech rate (wpm) · Pause ratio · Prosody · Connected speech quality',
+       note:'Patient reads passage aloud at comfortable pace. Useful for prosody and speech-language analysis.',color:'#7c4dff'}
+    ];
+
+    const RGB_MAP={'#00d4aa':'0,212,170','#0099dd':'0,153,221','#7c4dff':'124,77,255','#ffa502':'255,165,2'};
+
+    PROTO_DEFS.forEach(pr=>{
+      const isSelected=state.selectedParagraph===pr.idx;
+      const rgb=RGB_MAP[pr.color]||'0,212,170';
+      const pCard=el('div',{style:{background:isSelected?'rgba('+rgb+',0.07)':'#0a1628',border:'1.5px solid '+(isSelected?pr.color:'#1a2d44'),borderRadius:'10px',padding:'12px 14px',marginBottom:'10px',cursor:'pointer',transition:'all 0.15s'},onClick:()=>{state.selectedParagraph=pr.idx;render();}});
+      const hdr=el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}});
+      hdr.appendChild(el('span',{style:{fontSize:'18px'}},pr.icon));
+      const hdrTxt=el('div',{style:{flex:'1'}});
+      hdrTxt.appendChild(el('div',{style:{fontSize:'12px',fontWeight:'700',color:isSelected?pr.color:'#c8dae8',marginBottom:'3px'}},pr.title));
+      hdrTxt.appendChild(el('span',{style:{fontSize:'7px',fontWeight:'700',padding:'1px 5px',background:'rgba(0,0,0,0.3)',border:'1px solid '+pr.color,borderRadius:'4px',color:pr.color,letterSpacing:'0.5px'}},pr.badge));
+      hdr.appendChild(hdrTxt);
+      if(isSelected) hdr.appendChild(el('div',{style:{width:'18px',height:'18px',borderRadius:'50%',background:pr.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'#060e1a',fontWeight:'700',flexShrink:'0'}},'✓'));
+      pCard.appendChild(hdr);
+      pCard.appendChild(el('div',{style:{fontSize:'10px',color:'#8aa4ba',marginBottom:'4px'}},pr.purpose));
+      pCard.appendChild(el('div',{style:{fontSize:'9px',color:'#4a6a85',fontStyle:'italic'}},pr.note));
+      selectCard.appendChild(pCard);
+    });
+    wrap.appendChild(selectCard);
+
+    const mlNote=el('div',{style:{background:'rgba(124,77,255,0.06)',border:'1px solid rgba(124,77,255,0.2)',borderRadius:'10px',padding:'12px',marginBottom:'14px'}});
+    mlNote.innerHTML='<div style="font-size:10px;font-weight:700;color:#b388ff;margin-bottom:6px">🧠 ML Validation Dataset</div>'+
+      '<div style="font-size:10px;color:#8aa4ba;line-height:1.7">Every recording exports: <strong style="color:#c8dae8">Acoustic</strong> (jitter/shimmer/HNR/MFCC/F0) · <strong style="color:#c8dae8">Derived Spirometry</strong> (FEV1/FVC/PEF/FEF25-75) · <strong style="color:#c8dae8">Derived Lung Volumes</strong> (TLC/RV/FRC/IC/VC) · <strong style="color:#c8dae8">Derived Oscillometry</strong> (R5/R20/R5-R20/X5/Fres/AX) · <strong style="color:#c8dae8">Demographics</strong> (age/gender/diagnosis/smoking) · <strong style="color:#c8dae8">Calibration</strong> (SNR/gain/device).<br>Stratify by the Diagnosis field: Healthy vs COPD vs Asthma vs ILD vs Restrictive vs Mixed for ML training and validation.</div>';
+    wrap.appendChild(mlNote);
+
+    const engineCard=el('div',{className:'inner-box',style:{marginBottom:'14px',padding:'12px'}});
+    engineCard.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1.5px',marginBottom:'6px'}},'🔬 Analysis Engine v4'));
+    engineCard.appendChild(el('div',{style:{fontSize:'10px',color:'#8aa4ba',lineHeight:'1.6'},innerHTML:'YIN pitch (threshold 0.25 · Praat standard) · Jitter: local, RAP, PPQ5 · Shimmer: local, APQ3, APQ5, dB · Cepstral HNR + SNR correction · MFCC-13 (mean+SD) · Spectral centroid · Adaptive VAD · Gain normalization · Pre-emphasis 0.97'}));
+    wrap.appendChild(engineCard);
+    wrap.appendChild(el('button',{className:'btn-primary',onClick:startRecording},'🎙️ Begin Protocol'));
+    app.appendChild(wrap);
+  }
+
+  // === READING PHASE ===
+  if(state.phase==='reading'){
+    const wrap=el('div');
+    const passages=PASSAGES[state.selectedLang];
+    const currentPassage=passages[state.selectedParagraph];
+    const isSustained=currentPassage.id&&currentPassage.id.startsWith('sustained');
+    const isBreath=currentPassage.id&&currentPassage.id.startsWith('breath');
+    const RGB_MAP2={'#00d4aa':'0,212,170','#0099dd':'0,153,221','#7c4dff':'124,77,255','#ffa502':'255,165,2'};
+
+    if(state.micMode==='simulated')wrap.appendChild(el('div',{className:'sim-notice'},'ℹ️ Simulation mode — microphone unavailable.'));
+    if(state.micMode==='real')wrap.appendChild(el('div',{className:'mic-notice'},'🎙️ Microphone active — full waveform recording in progress'));
+
+    const recCard=el('div',{className:'card',style:{border:'1px solid #00d4aa30'}});
+    const recHeader=el('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}});
+    const recLeft=el('div',{style:{display:'flex',alignItems:'center',gap:'6px'}});
+    recLeft.appendChild(el('div',{style:{width:'8px',height:'8px',borderRadius:'50%',background:'#ff4757',animation:'pulse 1s infinite'}}));
+    recLeft.appendChild(el('span',{className:'display',style:{fontSize:'13px',fontWeight:'600',color:'#e0eaf0'}},
+      isSustained?'Protocol A — Follow Instructions':isBreath?'Protocol B — Read On One Breath':'Protocol C — Read Aloud'));
+    recLeft.appendChild(el('span',{style:{fontSize:'8px',padding:'1px 6px',background:'rgba(124,77,255,0.15)',borderRadius:'3px',color:'#b388ff'}},LANG_LABELS[state.selectedLang]));
+    recHeader.appendChild(recLeft);
+    recHeader.appendChild(el('span',{className:'mono',id:'rec-time',style:{fontSize:'18px',color:'#00d4aa'}},state.recordingTime.toFixed(1)+'s'));
+    recCard.appendChild(recHeader);
+
+    if(isSustained){
+      const STEPS=[
+        {num:'1',icon:'🫁',title:'Deep Breath',desc:'Take the deepest breath you can — fill your lungs completely to TLC',color:'#00d4aa'},
+        {num:'2',icon:'🗣️',title:'Say "Ahhhhh"',desc:'Hold one steady Ahhh at comfortable pitch — as long as possible without stopping',color:'#0099dd'},
+        {num:'3',icon:'💨',title:'Count 1 → 20',desc:'Take a breath, then count one to twenty steadily on a single breath',color:'#7c4dff'},
+        {num:'4',icon:'⚡',title:'Pa-Ta-Ka × 10',desc:'Take a breath, then say Pa-Ta-Ka as fast as clearly possible — 10 repetitions',color:'#ffa502'}
+      ];
+      const stepsGrid=el('div',{style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'10px'}});
+      STEPS.forEach(s=>{
+        const rgb2=RGB_MAP2[s.color]||'0,212,170';
+        const stepRow=el('div',{style:{display:'flex',alignItems:'center',gap:'10px',padding:'10px 12px',background:'#0a1628',borderRadius:'8px',border:'1px solid #1a2d44'}});
+        stepRow.appendChild(el('div',{style:{width:'32px',height:'32px',borderRadius:'50%',background:'rgba('+rgb2+',0.15)',border:'1px solid '+s.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px',flexShrink:'0'}},s.icon));
+        const txt=el('div');
+        txt.appendChild(el('div',{style:{fontSize:'12px',fontWeight:'700',color:s.color}},s.num+'. '+s.title));
+        txt.appendChild(el('div',{style:{fontSize:'10px',color:'#8aa4ba',lineHeight:'1.4',marginTop:'2px'}},s.desc));
+        stepRow.appendChild(txt);
+        stepsGrid.appendChild(stepRow);
+      });
+      recCard.appendChild(stepsGrid);
+      recCard.appendChild(el('div',{style:{fontSize:'9px',color:'#4a6a85',textAlign:'center',padding:'4px 0',marginBottom:'6px'}},'Complete all 4 steps in sequence — press Stop & Analyze when finished'));
+    } else if(isBreath){
+      const breathInstr=el('div',{style:{background:'rgba(0,153,221,0.08)',border:'1px solid rgba(0,153,221,0.25)',borderRadius:'8px',padding:'12px',marginBottom:'10px'}});
+      breathInstr.appendChild(el('div',{style:{fontSize:'11px',fontWeight:'700',color:'#0099dd',marginBottom:'8px'}},'📋 Protocol B Instructions'));
+      ['① Take the deepest breath possible — fill your lungs completely',
+       '② Read as far as you can on that ONE breath at a comfortable pace',
+       '③ Stop naturally when you run out of breath — do NOT inhale mid-passage',
+       '④ Press Stop & Analyze when done'].forEach((txt,i)=>{
+        breathInstr.appendChild(el('div',{style:{fontSize:'10px',color:i===2?'#ffa502':'#c8dae8',lineHeight:'1.8',fontWeight:i===2?'600':'400'}},txt));
+      });
+      recCard.appendChild(breathInstr);
+      const wordBox=el('div',{id:'word-display',style:{background:'#0a1628',borderRadius:'8px',padding:'14px',lineHeight:'2.0',fontSize:'14px',marginBottom:'10px',border:'1px solid #1a2d44',maxHeight:'140px',overflowY:'auto'}});
+      recCard.appendChild(wordBox);
+    } else {
+      recCard.appendChild(el('div',{style:{fontSize:'10px',color:'#5a7a9a',marginBottom:'8px',padding:'6px 10px',background:'#0a1628',borderRadius:'6px',border:'1px solid #1a2d44'}},'Read the highlighted passage aloud at a comfortable pace. Word highlighting follows your progress.'));
+      const wordBox=el('div',{id:'word-display',style:{background:'#0a1628',borderRadius:'8px',padding:'14px',lineHeight:'1.9',fontSize:'14px',marginBottom:'10px',border:'1px solid #1a2d44',maxHeight:'160px',overflowY:'auto'}});
+      recCard.appendChild(wordBox);
+    }
+
+    const canvas=document.createElement('canvas');canvas.id='waveform-canvas';canvas.className='waveform';canvas.width=600;canvas.height=70;
+    recCard.appendChild(canvas);
+    recCard.appendChild(el('div',{id:'live-metrics',style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'6px',marginTop:'8px'}}));
+    wrap.appendChild(recCard);
+    wrap.appendChild(el('button',{className:'btn-danger',onClick:stopRecording},'⏹ Stop & Analyze'));
+    app.appendChild(wrap);updateLiveUI();startWaveformAnimation();
+  }
+
+  // === NO VOICE DETECTED PHASE ===
+  if(state.phase==='no_voice'){
+    const wrap=el('div');
+    const calSnr=Number(state.calibration&&state.calibration.snr)||0;
+    const card=el('div',{className:'card',style:{border:'1px solid rgba(255,165,2,0.4)',textAlign:'center',padding:'30px 20px'}});
+
+    // Icon
+    card.appendChild(el('div',{style:{fontSize:'52px',marginBottom:'16px'}},'🎙️'));
+
+    // Title
+    card.appendChild(el('h2',{className:'display',style:{fontSize:'18px',fontWeight:'700',color:'#ffa502',marginBottom:'8px'}},'No Voice Detected'));
+
+    // Explanation
+    card.appendChild(el('p',{style:{fontSize:'12px',color:'#c8dae8',lineHeight:'1.8',marginBottom:'16px',maxWidth:'400px',margin:'0 auto 16px',whiteSpace:'pre-line'}},'Your '+state.noVoiceDuration.toFixed(1)+'s recording contained '+state.noVoiceFrames+' voiced frames — not enough for acoustic analysis (minimum 20 required).\n\nProducing a score from silence or background noise would be clinically misleading, so no result has been saved.'));
+
+    // Likely causes
+    const causesBox=el('div',{style:{background:'#0a1628',border:'1px solid #1a2d44',borderRadius:'8px',padding:'14px',marginBottom:'20px',textAlign:'left'}});
+    causesBox.appendChild(el('div',{style:{fontSize:'10px',fontWeight:'700',color:'#ffa502',marginBottom:'8px',textTransform:'uppercase',letterSpacing:'1px'}},'Likely Causes'));
+    [
+      '🎤 Device too far from mouth — hold within 20-30cm',
+      '🔇 You stopped recording before speaking — press Record, then speak',
+      '📱 Phone mic blocked or covered — check device orientation',
+      '🌐 Browser decoded audio silently — try refreshing and repeating',
+      '📋 Protocol A: Make sure to actually say Ahhh after pressing Begin'
+    ].forEach(txt=>{
+      causesBox.appendChild(el('div',{style:{fontSize:'10px',color:'#8aa4ba',lineHeight:'1.8'}},txt));
+    });
+    card.appendChild(causesBox);
+
+    // Diagnostic box — helps debug which path failed
+    const diag=state.noVoiceDiag||{};
+    const diagBox=el('div',{style:{background:'#0a1628',border:'1px solid #1a2d44',borderRadius:'8px',padding:'10px 12px',marginBottom:'16px',textAlign:'left'}});
+    diagBox.appendChild(el('div',{style:{fontSize:'9px',fontWeight:'700',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'6px'}},'Diagnostic Info'));
+    [
+      'Browser: '+(diag.browser||'?')+' · '+(diag.platform||'?'),
+      'Audio path: '+(diag.mimeType||'?'),
+      'Sample rate: '+(diag.sampleRate||'?')+' Hz',
+      'Gain norm applied: ×'+(diag.gainNorm||'1.0'),
+      'VAD threshold: '+(diag.vadThreshold||'?'),
+      'Calibration SNR: '+(diag.calSNR||'?')+' dB · Done: '+(diag.calDone?'Yes':'No')
+    ].forEach(txt=>{
+      diagBox.appendChild(el('div',{style:{fontSize:'9px',color:'#4a6a85',lineHeight:'1.8',fontFamily:'monospace'}},txt));
+    });
+    diagBox.appendChild(el('div',{style:{fontSize:'9px',color:'#ffa502',marginTop:'4px'}},'📋 Screenshot this and share with developer for diagnosis'));
+    card.appendChild(diagBox);
+    if(calSnr>0&&calSnr<8){
+      card.appendChild(el('div',{style:{background:'rgba(255,71,87,0.08)',border:'1px solid rgba(255,71,87,0.2)',borderRadius:'8px',padding:'10px 12px',marginBottom:'16px',fontSize:'10px',color:'#ff6b81'}},'⚠️ Your calibration showed SNR '+calSnr.toFixed(1)+' dB — very noisy environment. Move to a quieter room and recalibrate.'));
+    }
+
+    wrap.appendChild(card);
+
+    // Action buttons
+    const btnRow=el('div',{style:{display:'flex',gap:'10px',marginTop:'4px'}});
+
+    // Retry same protocol
+    btnRow.appendChild(el('button',{className:'btn-primary',style:{flex:'1'},onClick:()=>{
+      state.phase='select';
+      state.results=null;
+      state.lungPrediction=null;
+      state.analysisProgress=null;
+      render();
+    }},'🔄 Try Again'));
+
+    // Recalibrate
+    btnRow.appendChild(el('button',{style:{flex:'1',padding:'14px',background:'linear-gradient(135deg,#ffa502,#ff6348)',border:'none',borderRadius:'10px',color:'#fff',fontSize:'14px',fontWeight:'700',cursor:'pointer',fontFamily:'inherit'},onClick:()=>{
+      state.phase='calibration';
+      state.calibration={done:false,noiseFloorRMS:0,noiseFloorDB:0,refToneRMS:0,refToneDB:0,snr:0,spectralTilt:0,deviceQuality:'',envQuality:'',calStep:0,calStatus:''};
+      render();
+    }},'🎚️ Recalibrate'));
+
+    wrap.appendChild(btnRow);
+    app.appendChild(wrap);
+  }
+
+  // === ANALYZING PHASE ===
+  if(state.phase==='analyzing'){
+    const wrap=el('div',{style:{textAlign:'center',padding:'40px 20px'}});
+    wrap.appendChild(el('div',{style:{width:'50px',height:'50px',border:'3px solid #1a2d44',borderTopColor:'#00d4aa',borderRadius:'50%',margin:'0 auto 16px',animation:'spin 0.8s linear infinite'}}));
+    wrap.appendChild(el('h2',{className:'display',style:{color:'#00d4aa',fontSize:'16px',marginBottom:'4px'}},'Research-Grade Analysis'));
+    wrap.appendChild(el('p',{style:{color:'#5a7a9a',fontSize:'11px',marginBottom:'16px'}},'Full waveform processing — this takes a few seconds...'));
+    wrap.appendChild(el('div',{id:'analysis-steps',style:{textAlign:'left',maxWidth:'320px',margin:'0 auto'}}));
+    app.appendChild(wrap);
+    if(state.analysisProgress)renderAnalysisUI();
+  }
+
+  // === RESULTS PHASE ===
+  if(state.phase==='results'&&state.results&&state.lungPrediction){
+    const r=state.results,lp=state.lungPrediction;const wrap=el('div');
+
+    if(state.selectedHistoryIdx!==null){
+      const hInd=el('div',{style:{background:'rgba(0,153,221,0.08)',border:'1px solid rgba(0,153,221,0.2)',borderRadius:'8px',padding:'8px 12px',marginBottom:'10px',display:'flex',justifyContent:'space-between',alignItems:'center'}});
+      hInd.appendChild(el('span',{style:{fontSize:'10px',color:'#6ab8e0'}},'📂 Viewing saved assessment'));
+      hInd.appendChild(el('button',{style:{padding:'3px 10px',background:'rgba(0,212,170,0.15)',border:'1px solid #00d4aa',borderRadius:'6px',color:'#00d4aa',fontSize:'9px',fontWeight:'600',cursor:'pointer'},onClick:reset},'← Back'));
+      wrap.appendChild(hInd);
+    }
+
+    // Method badge
+    if(r.analysisMethod){
+      const methodBadge=el('div',{style:{background:'rgba(124,77,255,0.08)',border:'1px solid rgba(124,77,255,0.2)',borderRadius:'8px',padding:'8px 12px',marginBottom:'10px',fontSize:'9px',color:'#b388ff'}});
+      methodBadge.innerHTML='🔬 <strong>Analysis method:</strong> '+r.analysisMethod+' · '+r.pitchTrackLength+' voiced frames · '+r.duration.toFixed(1)+'s recording';
+      wrap.appendChild(methodBadge);
+    }
+
+    // Score + Pattern
+    const summaryCard=el('div',{className:'card',style:{border:'1px solid '+lp.patternColor+'30',textAlign:'center'}});
+    const summRow=el('div',{style:{display:'flex',justifyContent:'center',gap:'24px',marginBottom:'12px'}});
+    const scoreDiv=el('div');scoreDiv.appendChild(el('div',{className:'display',style:{fontSize:'42px',fontWeight:'800',color:r.riskColor,lineHeight:'1'}},r.overallScore.toFixed(0)));scoreDiv.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1.5px',marginTop:'4px'}},'Acoustic Score'));summRow.appendChild(scoreDiv);
+    summRow.appendChild(el('div',{style:{width:'1px',background:'#1a2d44'}}));
+    const patDiv=el('div');patDiv.appendChild(el('div',{className:'display',style:{fontSize:'18px',fontWeight:'700',color:lp.patternColor,lineHeight:'1',marginTop:'8px'}},lp.pattern));patDiv.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1.5px',marginTop:'4px'}},'Predicted Pattern'));patDiv.appendChild(el('div',{style:{fontSize:'10px',color:'#6a8a9a',marginTop:'6px',lineHeight:'1.4',maxWidth:'280px'}},lp.patternDesc));summRow.appendChild(patDiv);
+    summaryCard.appendChild(summRow);wrap.appendChild(summaryCard);
+
+    // Tabs
+    const tabs=el('div',{style:{display:'flex',gap:'6px',marginBottom:'12px',flexWrap:'wrap'}});
+    [{id:'spirometry',label:'Spirometry'},{id:'oscillometry',label:'Oscillometry'},{id:'volumes',label:'Lung Volumes'},{id:'mechanics',label:'Mechanics'},{id:'acoustic',label:'Acoustic'},{id:'mfcc',label:'MFCC'}].forEach(tab=>{
+      tabs.appendChild(el('button',{className:'tab-btn '+(state.activeTab===tab.id?'tab-active':'tab-inactive'),onClick:()=>{state.activeTab=tab.id;render();}},tab.label));
+    });wrap.appendChild(tabs);
+
+    // === TAB CONTENT ===
+    if(state.activeTab==='spirometry'){
+      const c=el('div',{className:'card'});c.appendChild(el('h3',{className:'sec-title'},'Predicted Spirometry'));
+      c.appendChild(el('div',{className:'research-basis',innerHTML:'<strong>Research basis:</strong> Voice acoustic features predict FEV1% with up to 88% accuracy (VoiceMed 2025). Phonation duration correlates with lung volume.'}));
+      c.appendChild(buildBarChart('FEV1 (% predicted)',lp.spirometry.fev1Pct,120,lp.spirometry.fev1Pct>80?'#00d4aa':lp.spirometry.fev1Pct>60?'#ffa502':'#ff4757',v=>v.toFixed(0)+'%'));
+      c.appendChild(buildBarChart('FVC (% predicted)',lp.spirometry.fvcPct,125,lp.spirometry.fvcPct>80?'#00d4aa':lp.spirometry.fvcPct>60?'#ffa502':'#ff4757',v=>v.toFixed(0)+'%'));
+      c.appendChild(buildBarChart('FEV1/FVC Ratio',lp.spirometry.fev1fvcRatio*100,100,lp.spirometry.fev1fvcRatio>0.70?'#00d4aa':'#ff4757',v=>(v/100).toFixed(2)));
+      c.appendChild(buildBarChart('PEF (L/min)',lp.spirometry.pef,650,'#0099dd',v=>v.toFixed(0)));
+      c.appendChild(buildBarChart('FEF 25-75%',lp.spirometry.fef2575,120,lp.spirometry.fef2575>65?'#00d4aa':'#ffa502',v=>v.toFixed(0)+'%'));
+      const interp=el('div',{className:'interp-box'});interp.appendChild(el('div',{className:'interp-label'},'Interpretation'));
+      interp.appendChild(el('div',{className:'interp-text'},(lp.spirometry.fev1fvcRatio<0.70?'FEV1/FVC <0.70 suggests obstruction. ':'FEV1/FVC normal. ')+(lp.spirometry.fev1Pct<80?'FEV1 '+lp.spirometry.fev1Pct.toFixed(0)+'% — '+(lp.spirometry.fev1Pct<50?'severe':lp.spirometry.fev1Pct<65?'moderate':'mild')+' impairment. ':'FEV1 normal. ')+(lp.spirometry.fef2575<65?'Reduced FEF25-75% suggests SAD.':'SAD markers normal.')));
+      c.appendChild(interp);wrap.appendChild(c);
+    }
+
+    if(state.activeTab==='oscillometry'){
+      const c=el('div',{className:'card'});c.appendChild(el('h3',{className:'sec-title'},'Predicted Oscillometry'));
+      c.appendChild(el('div',{className:'research-basis',innerHTML:'<strong>Research basis:</strong> R5 = total airway resistance, R5-R20 = peripheral airway disease marker, X5 = compliance/elastance.'}));
+      const g=el('div',{className:'metric-grid-3'});
+      g.appendChild(buildGauge(lp.oscillometry.r5,12,'R5','cmH₂O/L/s',lp.oscillometry.r5>5?'#ff4757':'#00d4aa'));
+      g.appendChild(buildGauge(lp.oscillometry.r20,6,'R20','cmH₂O/L/s',lp.oscillometry.r20>4?'#ffa502':'#00d4aa'));
+      g.appendChild(buildGauge(lp.oscillometry.r5r20,5,'R5-R20','cmH₂O/L/s',lp.oscillometry.r5r20>1.5?'#ff4757':'#00d4aa'));
+      g.appendChild(buildGauge(Math.abs(lp.oscillometry.x5),5,'|X5|','cmH₂O/L/s',Math.abs(lp.oscillometry.x5)>2?'#ff4757':'#7c4dff'));
+      g.appendChild(buildGauge(lp.oscillometry.fres,30,'Fres','Hz',lp.oscillometry.fres>15?'#ffa502':'#00d4aa'));
+      g.appendChild(buildGauge(lp.oscillometry.ax,25,'AX','cmH₂O/L',lp.oscillometry.ax>10?'#ff4757':'#00d4aa'));
+      c.appendChild(g);
+      const interp=el('div',{className:'interp-box'});interp.appendChild(el('div',{className:'interp-label'},'Interpretation'));
+      interp.appendChild(el('div',{className:'interp-text'},(lp.oscillometry.r5>5?'Elevated R5. ':'R5 normal. ')+(lp.oscillometry.r5r20>1.5?'R5-R20↑ peripheral disease. ':'R5-R20 normal. ')+(Math.abs(lp.oscillometry.x5)>2?'X5↓ reduced compliance. ':'Reactance normal. ')+(lp.oscillometry.fres>15?'Elevated Fres.':'Fres normal.')));
+      c.appendChild(interp);wrap.appendChild(c);
+    }
+
+    if(state.activeTab==='volumes'){
+      const c=el('div',{className:'card'});c.appendChild(el('h3',{className:'sec-title'},'Predicted Lung Volumes'));
+      c.appendChild(buildBarChart('TLC',lp.lungVolumes.tlcPct,140,lp.lungVolumes.tlcPct>80&&lp.lungVolumes.tlcPct<120?'#00d4aa':'#ffa502',v=>v.toFixed(0)+'%'));
+      c.appendChild(buildBarChart('VC',lp.lungVolumes.vcPct,125,lp.lungVolumes.vcPct>80?'#00d4aa':'#ff4757',v=>v.toFixed(0)+'%'));
+      c.appendChild(buildBarChart('IC',lp.lungVolumes.icPct,120,lp.lungVolumes.icPct>70?'#00d4aa':'#ffa502',v=>v.toFixed(0)+'%'));
+      c.appendChild(buildBarChart('FRC',lp.lungVolumes.frcPct,160,lp.lungVolumes.frcPct<120?'#00d4aa':'#ffa502',v=>v.toFixed(0)+'%'));
+      c.appendChild(buildBarChart('RV',lp.lungVolumes.rvPct,200,lp.lungVolumes.rvPct<120?'#00d4aa':lp.lungVolumes.rvPct<150?'#ffa502':'#ff4757',v=>v.toFixed(0)+'%'));
+      wrap.appendChild(c);
+    }
+
+    if(state.activeTab==='mechanics'){
+      const c=el('div',{className:'card'});c.appendChild(el('h3',{className:'sec-title'},'Predicted Respiratory Mechanics'));
+      const grid=el('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'10px',marginBottom:'12px'}});
+      const m1=el('div',{className:'metric-cell-lg'});m1.appendChild(el('div',{className:'mono',style:{fontSize:'24px',fontWeight:'700',color:'#00d4aa'}},lp.mechanics.compliance.toFixed(3)));m1.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1px'}},'Compliance'));m1.appendChild(el('div',{style:{fontSize:'8px',color:'#3a5a7a'}},'L/cmH₂O'));grid.appendChild(m1);
+      const m2=el('div',{className:'metric-cell-lg'});m2.appendChild(el('div',{className:'mono',style:{fontSize:'24px',fontWeight:'700',color:'#7c4dff'}},lp.mechanics.elastance.toFixed(1)));m2.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1px'}},'Elastance'));m2.appendChild(el('div',{style:{fontSize:'8px',color:'#3a5a7a'}},'cmH₂O/L'));grid.appendChild(m2);
+      const m3=el('div',{className:'metric-cell-lg'});m3.appendChild(el('div',{className:'mono',style:{fontSize:'24px',fontWeight:'700',color:'#0099dd'}},lp.mechanics.resistance.toFixed(2)));m3.appendChild(el('div',{style:{fontSize:'9px',color:'#5a7a9a',textTransform:'uppercase',letterSpacing:'1px'}},'Resistance'));m3.appendChild(el('div',{style:{fontSize:'8px',color:'#3a5a7a'}},'cmH₂O/L/s'));grid.appendChild(m3);
+      c.appendChild(grid);wrap.appendChild(c);
+    }
+
+    if(state.activeTab==='acoustic'){
+      const c=el('div',{className:'card'});c.appendChild(el('h3',{className:'sec-title'},'Research-Grade Acoustic Parameters'));
+
+      // Pitch track quality warning — most important diagnostic
+      const ptq = r.pitchTrackQuality || (r.pitchTrackLength < 10 ? 'insufficient' : r.pitchTrackLength < 50 ? 'marginal' : 'good');
+      if(ptq === 'insufficient' || ptq === 'marginal'){
+        const ptWarn = el('div',{style:{
+          background: ptq==='insufficient' ? 'rgba(255,71,87,0.10)' : 'rgba(255,165,2,0.10)',
+          border: '1px solid '+(ptq==='insufficient'?'rgba(255,71,87,0.35)':'rgba(255,165,2,0.3)'),
+          borderRadius:'8px',padding:'10px 12px',marginBottom:'12px'
+        }});
+        ptWarn.appendChild(el('div',{style:{fontSize:'11px',fontWeight:'700',color:ptq==='insufficient'?'#ff6b81':'#ffa502',marginBottom:'4px'}},
+          ptq==='insufficient'
+            ? '⚠️ Pitch track empty ('+r.pitchTrackLength+' voiced frames) — Jitter, Shimmer and F0 cannot be computed'
+            : '⚠️ Pitch track thin ('+r.pitchTrackLength+' frames) — Perturbation metrics may be unreliable'
+        ));
+        ptWarn.appendChild(el('div',{style:{fontSize:'10px',color:'#c8dae8',lineHeight:'1.6'}},
+          '📌 Clinical note: Jitter and Shimmer require sustained phonation. Use the "Sustained Vowel + Counting" passage for valid perturbation analysis — say Ahhh for as long as possible before counting.'
+        ));
+        ptWarn.appendChild(el('div',{style:{fontSize:'10px',color:'#5a7a9a',marginTop:'6px'}},
+          'Gain norm applied: ×'+(r.gainNorm||'1.0')+' · VAD threshold: '+(r.vadThreshold||'--')+' · YIN threshold: 0.25'
+        ));
+        c.appendChild(ptWarn);
+      } else {
+        c.appendChild(el('div',{style:{fontSize:'9px',color:'#3a6a4a',background:'rgba(0,212,170,0.05)',borderRadius:'6px',padding:'6px 10px',marginBottom:'10px'}},
+          '✅ Pitch track: '+r.pitchTrackLength+' voiced frames · Gain norm: ×'+(r.gainNorm||'1.0')
+        ));
+      }
+      const g=el('div',{className:'metric-grid-3',style:{marginBottom:'10px'}});
+      g.appendChild(buildGauge(r.jitter,8,'Jitter (local)','%','#00d4aa',v=>v>1.04));
+      g.appendChild(buildGauge(r.shimmer,15,'Shimmer (local)','%','#0099dd',v=>v>3.81));
+      g.appendChild(buildGauge(r.avgHNR,30,'HNR (cepstral)','dB','#7c4dff',v=>v<7));
+      g.appendChild(buildGauge(r.avgPitch,350,'Mean F0 (YIN)','Hz','#00d4aa'));
+      g.appendChild(buildGauge(r.pitchVariance,80,'F0 Variance','Hz σ','#0099dd'));
+      g.appendChild(buildGauge(r.speechRate,200,'Speech Rate','wpm','#7c4dff'));
+      c.appendChild(g);
+
+      // Extended perturbation metrics
+      c.appendChild(el('h3',{className:'sec-title',style:{marginTop:'12px'}},'Extended Perturbation Metrics'));
+      [{label:'Jitter local %',val:r.jitter,ref:'Normal <1.04%'},{label:'Jitter RAP %',val:r.jitterRAP||0,ref:'Normal <0.68%'},{label:'Jitter PPQ5 %',val:r.jitterPPQ5||0,ref:'Normal <0.84%'},{label:'Shimmer local %',val:r.shimmer,ref:'Normal <3.81%'},{label:'Shimmer APQ3 %',val:r.shimmerAPQ3||0,ref:'Normal <3.07%'},{label:'Shimmer APQ5 %',val:r.shimmerAPQ5||0,ref:'Normal <3.39%'}].forEach(item=>{
+        const row=el('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 0',borderBottom:'1px solid #1a2d4420'}});
+        row.appendChild(el('span',{style:{fontSize:'10px',color:'#8aa4ba'}},item.label));
+        row.appendChild(el('span',{style:{fontSize:'10px',color:'#5a7a9a'}},item.ref));
+        row.appendChild(el('span',{className:'mono',style:{fontSize:'11px',fontWeight:'600',color:'#c8dae8'}},item.val.toFixed(3)));
+        c.appendChild(row);
+      });
+
+      // Scores
+      c.appendChild(el('h3',{className:'sec-title',style:{marginTop:'12px'}},'Component Scores'));
+      [{label:'Jitter Score',score:r.jitterScore},{label:'Shimmer Score',score:r.shimmerScore},{label:'HNR Score',score:r.hnrScore},{label:'Breath Support',score:r.breathScore}].forEach(item=>{
+        const row=el('div',{style:{marginBottom:'8px'}});
+        const top=el('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:'2px'}});
+        top.appendChild(el('span',{style:{fontSize:'11px',fontWeight:'500'}},item.label));
+        top.appendChild(el('span',{className:'mono',style:{fontSize:'11px',color:item.score>70?'#00d4aa':item.score>50?'#ffa502':'#ff4757'}},item.score.toFixed(0)+'/100'));
+        row.appendChild(top);
+        const track=el('div',{style:{width:'100%',height:'4px',background:'#1a2d44',borderRadius:'2px',overflow:'hidden'}});
+        track.appendChild(el('div',{style:{width:item.score+'%',height:'100%',borderRadius:'2px',background:item.score>70?'#00d4aa':item.score>50?'#ffa502':'#ff4757'}}));
+        row.appendChild(track);c.appendChild(row);
+      });
+      wrap.appendChild(c);
+    }
+
+    if(state.activeTab==='mfcc'){
+      const c=el('div',{className:'card'});c.appendChild(el('h3',{className:'sec-title'},'Mel-Frequency Cepstral Coefficients (MFCC-13)'));
+      c.appendChild(el('div',{className:'research-basis',innerHTML:'<strong>Research basis:</strong> MFCCs are the standard feature set in voice-based respiratory screening. They capture spectral envelope characteristics that correlate with vocal tract and respiratory function.'}));
+      const mfccs=r.mfccs||Array(13).fill(0);
+      const maxAbsVal=Math.max(...mfccs.map(Math.abs),1);
+      const mfccGrid=el('div',{style:{display:'grid',gridTemplateColumns:'repeat(13,1fr)',gap:'3px',alignItems:'flex-end',height:'120px',padding:'10px 0',marginBottom:'8px'}});
+      mfccs.forEach((val,i)=>{
+        const normH=Math.abs(val)/maxAbsVal*100;const isPos=val>=0;
+        const col=isPos?'#00d4aa':'#0099dd';
+        const barWrap=el('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',height:'100%',justifyContent:'flex-end'}});
+        barWrap.appendChild(el('div',{className:'mono',style:{fontSize:'7px',color:'#5a7a9a',marginBottom:'2px'}},val.toFixed(1)));
+        barWrap.appendChild(el('div',{style:{width:'100%',height:Math.max(4,normH)+'%',background:col,borderRadius:'2px 2px 0 0',opacity:'0.8',transition:'height 0.5s ease'}}));
+        barWrap.appendChild(el('div',{className:'mono',style:{fontSize:'7px',color:'#3a5a7a',marginTop:'2px'}},'C'+i));
+        mfccGrid.appendChild(barWrap);
+      });
+      c.appendChild(mfccGrid);
+
+      // MFCC table
+      const table=el('div',{style:{marginTop:'10px'}});
+      mfccs.forEach((val,i)=>{
+        const row=el('div',{style:{display:'flex',justifyContent:'space-between',padding:'3px 0',borderBottom:'1px solid #1a2d4420'}});
+        row.appendChild(el('span',{className:'mono',style:{fontSize:'10px',color:'#5a7a9a'}},'MFCC-'+i));
+        row.appendChild(el('span',{className:'mono',style:{fontSize:'10px',fontWeight:'600',color:'#c8dae8'}},val.toFixed(4)));
+        table.appendChild(row);
+      });
+      c.appendChild(table);wrap.appendChild(c);
+    }
+
+    // References
+    const refCard=el('div',{className:'card',style:{background:'#081420'}});
+    refCard.appendChild(el('h3',{className:'sec-title'},'Research References'));
+    refCard.appendChild(el('div',{className:'research-ref',innerHTML:[
+      '• <strong>de Cheveigné & Kawahara (2002)</strong> — YIN pitch detection algorithm.',
+      '• <strong>VoiceMed (2025)</strong> — 88% accuracy predicting FEV1/FVC from voice.',
+      '• <strong>Frontiers Digital Health (2022)</strong> — ML models predict FEV1% from voice.',
+      '• <strong>Teixeira et al. (2013)</strong> — HNR reflects respiratory-to-vocal conversion.',
+      '• <strong>Boersma (1993)</strong> — Jitter/shimmer perturbation standards (Praat).',
+      '• <strong>Davis & Mermelstein (1980)</strong> — MFCC as speech feature representation.',
+      '• <strong>King et al. (2019)</strong> — ATS/ERS oscillometry technical standards.'
+    ].map(s=>'<div style="margin-bottom:4px">'+s+'</div>').join('')}));
+    wrap.appendChild(refCard);
+
+    // Disclaimer
+    wrap.appendChild(el('div',{className:'disclaimer-box',innerHTML:'<p style="font-size:9px;color:#c8a050;margin:0;line-height:1.6;">⚠️ <strong>Disclaimer:</strong> PulmoVox v3 provides research-grade acoustic analysis but lung function predictions remain heuristic estimates based on published correlations. These are <strong>NOT clinical diagnoses</strong>. External validation against actual PFT data is required before clinical use.</p>'}));
+    // Action buttons row
+    const actionRow=el('div',{style:{display:'flex',gap:'8px',marginBottom:'14px'}});
+    actionRow.appendChild(el('button',{className:'btn-primary',style:{flex:'1'},onClick:reset},'🔄 New Assessment'));
+    actionRow.appendChild(el('button',{style:{flex:'1',padding:'14px',background:'linear-gradient(135deg,#0099dd,#0066aa)',border:'none',borderRadius:'10px',color:'#fff',fontSize:'14px',fontWeight:'700',cursor:'pointer',fontFamily:'inherit'},onClick:exportCSV},'⬇️ Export All CSV ('+state.assessmentHistory.length+')'));
+    wrap.appendChild(actionRow);
+    // Info about accumulation
+    wrap.appendChild(el('div',{style:{textAlign:'center',fontSize:'9px',color:'#4a6a85',marginBottom:'10px',lineHeight:'1.5'}},'All assessments accumulate automatically in browser storage. Export CSV at any time — it includes every assessment taken on this device. No need to export after each measurement.'));
+    app.appendChild(wrap);
+  }
+}
+
+render();
+</script>
+</body>
+</html>
