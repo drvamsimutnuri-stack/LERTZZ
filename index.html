@@ -839,7 +839,7 @@ var BROWSER=detectBrowser();
 
 function collectSessionMeta(){
   var nav=navigator||{};
-  var b=(typeof BROWSER!=='undefined'&&BROWSER)?BROWSER:detectBrowser();
+  var b=detectBrowser();
   var scr=(typeof window!=='undefined'&&window.screen)?window.screen:null;
   return{
     browser:b.browserName,
@@ -1287,13 +1287,13 @@ async function stopRecording(){
       state.analysisProgress=null;
       state.noVoiceFrames=results.pitchTrackLength;
       state.noVoiceDuration=results.duration;
-      // Store diagnostic info for display
+      const _bv=detectBrowser();
       state.noVoiceDiag={
         gainNorm:results.gainNorm,
         vadThreshold:results.vadThreshold,
         sampleRate:results.sampleRate,
-        browser:BROWSER.browserName,
-        platform:BROWSER.platform,
+        browser:_bv.browserName,
+        platform:_bv.platform,
         mimeType:state.mimeType,
         calSNR:(state.calibration.snr||0).toFixed(1),
         calDone:state.calibration.done
@@ -1443,7 +1443,7 @@ function getMicAccessWarning(){
   var isFile=location.protocol==='file:';
   var isHttp=location.protocol==='http:';
   var isLocalHost=location.hostname==='localhost'||location.hostname==='127.0.0.1';
-  var b=BROWSER;
+  var b=detectBrowser();
   if(isHttp&&!isLocalHost){
     return{
       level:'error',
@@ -1746,6 +1746,7 @@ function render(){
   if(state.phase==='cal_results'){
     const wrap=el('div');
     const micUnavailable=state.calibration.envQuality==='Mic unavailable'||state.calibration.envQuality==='Stream lost — retry';
+    const _bcal=detectBrowser();
 
     const card=el('div',{className:'card'});
     card.appendChild(el('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}},
@@ -1757,7 +1758,7 @@ function render(){
       // Show clear deploy CTA — mic was never available
       card.appendChild(el('div',{style:{background:'rgba(255,71,87,0.1)',border:'1px solid rgba(255,71,87,0.3)',borderRadius:'10px',padding:'14px',marginBottom:'14px'}},
         el('div',{style:{fontSize:'13px',color:'#ff6b81',fontWeight:'700',marginBottom:'8px'}},'⛔ Microphone could not be accessed on this browser + protocol combination'),
-        el('div',{style:{fontSize:'11px',color:'#c8dae8',lineHeight:'1.7',marginBottom:'10px',whiteSpace:'pre-line'}},'Browser: '+BROWSER.browserName+' · Protocol: '+location.protocol+'\n\nSafari and Firefox require HTTPS for microphone access. Running from a file:// URL blocks mic on all non-Chrome browsers.'),
+        el('div',{style:{fontSize:'11px',color:'#c8dae8',lineHeight:'1.7',marginBottom:'10px',whiteSpace:'pre-line'}},'Browser: '+_bcal.browserName+' · Protocol: '+location.protocol+'\n\nSafari and Firefox require HTTPS for microphone access. Running from a file:// URL blocks mic on all non-Chrome browsers.'),
         el('div',{style:{fontSize:'11px',color:'#ffa502',fontWeight:'600',marginBottom:'8px'}},'✅ Fix: Deploy PulmoVox to Netlify (free, 60 seconds)'),
         el('ol',{style:{fontSize:'11px',color:'#c8dae8',lineHeight:'2',paddingLeft:'18px'}},
           el('li',{},'Go to netlify.com/drop'),
@@ -1789,7 +1790,7 @@ function render(){
       }
     }
     // Browser + codec info — always shown
-    card.appendChild(el('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'10px',marginTop:'10px',padding:'6px 0',borderTop:'1px solid #1a2d4420'}},el('span',{style:{color:'#5a7a9a'}},'Browser / Platform:'),el('span',{className:'mono',style:{color:'#7c9db5'}},BROWSER.browserName+' · '+BROWSER.platform+' · '+location.protocol)));
+    card.appendChild(el('div',{style:{display:'flex',justifyContent:'space-between',fontSize:'10px',marginTop:'10px',padding:'6px 0',borderTop:'1px solid #1a2d4420'}},el('span',{style:{color:'#5a7a9a'}},'Browser / Platform:'),el('span',{className:'mono',style:{color:'#7c9db5'}},_bcal.browserName+' · '+_bcal.platform+' · '+location.protocol)));
     wrap.appendChild(card);
     wrap.appendChild(el('button',{className:'btn-primary',onClick:()=>{state.phase='select';render();}},micUnavailable?'✓ Proceed (Simulated Mode)':'✓ Proceed to Recording'));
     wrap.appendChild(el('div',{style:{textAlign:'center',marginTop:'8px'}}));
