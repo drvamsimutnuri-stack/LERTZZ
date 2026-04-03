@@ -814,6 +814,7 @@ var BROWSER=detectBrowser();
 
 function collectSessionMeta(){
   var nav=navigator||{};
+  var scr=(typeof window!=='undefined'&&window.screen)?window.screen:null;
   return{
     browser:BROWSER.browserName,
     platform:BROWSER.platform,
@@ -822,7 +823,7 @@ function collectSessionMeta(){
     hardwareConcurrency:nav.hardwareConcurrency||'',
     deviceMemory:nav.deviceMemory||'',
     maxTouchPoints:nav.maxTouchPoints||0,
-    screen:((screen&&screen.width)?(screen.width+'x'+screen.height):''),
+    screen:(scr&&scr.width?(scr.width+'x'+scr.height):''),
     pixelRatio:window.devicePixelRatio||1,
     protocol:location.protocol||'',
     hostname:location.hostname||'',
@@ -2189,6 +2190,30 @@ function render(){
   }
 }
 
+window.addEventListener('error',function(ev){
+  try{
+    var app=document.getElementById('app');
+    if(!app)return;
+    var msg=(ev&&ev.message)?ev.message:'Unknown runtime error';
+    app.innerHTML='<div class="card" style="border:1px solid rgba(255,71,87,0.45)">'+
+      '<div style="font-size:14px;color:#ff6b81;font-weight:700;margin-bottom:8px">Runtime Error</div>'+
+      '<div style="font-size:11px;color:#c8dae8;line-height:1.6">'+msg+'</div>'+
+      '<div style="font-size:10px;color:#5a7a9a;margin-top:8px">Please refresh once. If still failing, share this message.</div>'+
+    '</div>';
+  }catch(_e){}
+});
+window.addEventListener('unhandledrejection',function(ev){
+  try{
+    var app=document.getElementById('app');
+    if(!app)return;
+    var msg=(ev&&ev.reason&&ev.reason.message)?ev.reason.message:String(ev.reason||'Unknown promise rejection');
+    app.innerHTML='<div class="card" style="border:1px solid rgba(255,165,2,0.45)">'+
+      '<div style="font-size:14px;color:#ffa502;font-weight:700;margin-bottom:8px">Async Error</div>'+
+      '<div style="font-size:11px;color:#c8dae8;line-height:1.6">'+msg+'</div>'+
+      '<div style="font-size:10px;color:#5a7a9a;margin-top:8px">Please refresh once. If still failing, share this message.</div>'+
+    '</div>';
+  }catch(_e){}
+});
 render();
 </script>
 </body>
