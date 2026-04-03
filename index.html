@@ -62,6 +62,32 @@ canvas.waveform{width:100%;height:70px;border-radius:8px;background:#0a1628;bord
 </style>
 </head>
 <body>
+<script>
+(function(){
+  function esc(s){
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  }
+  function showErr(title,msg){
+    var a=document.getElementById('app');
+    if(!a)return;
+    var path=location.pathname||'/';
+    var foot=path==='/'||path===''?'You opened the <strong>user site root</strong>. For a <em>project</em> site, the URL must include the repository name (see GitHub → Settings → Pages).':'';
+    a.innerHTML='<div class="card" style="border:1px solid rgba(255,71,87,0.45);padding:16px;margin:12px auto;max-width:820px">'+
+      '<div style="font-size:14px;font-weight:700;color:#ff6b81;margin-bottom:8px">'+esc(title)+'</div>'+
+      '<div style="font-size:11px;color:#c8dae8;line-height:1.6;white-space:pre-wrap">'+esc(msg)+'</div>'+
+      (foot?'<div style="font-size:10px;color:#ffa502;margin-top:10px;line-height:1.5">'+foot+'</div>':'')+
+      '<div style="font-size:10px;color:#5a7a9a;margin-top:10px">Path: <span class="mono">'+esc(path)+'</span></div></div>';
+  }
+  window.addEventListener('error',function(ev){
+    showErr('Runtime error',(ev&&ev.message)?ev.message:'Unknown');
+  });
+  window.addEventListener('unhandledrejection',function(ev){
+    var r=ev&&ev.reason;
+    var m=r&&r.message?String(r.message):String(r||'rejection');
+    showErr('Async error',m);
+  });
+})();
+</script>
 <div class="app-wrap">
   <div style="text-align:center;margin-bottom:20px;">
     <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:4px;">
@@ -74,7 +100,7 @@ canvas.waveform{width:100%;height:70px;border-radius:8px;background:#0a1628;bord
     <p class="mono" style="color:#4a6a85;font-size:9px;letter-spacing:2px;text-transform:uppercase;">Research-Grade Acoustic Lung Prediction · Full Waveform Analysis · Fully Offline</p>
     <div id="history-toggle-area"></div>
   </div>
-  <div class="container" id="app"></div>
+  <div class="container" id="app"><div id="pulmovox-preboot" class="card" style="max-width:820px;margin:0 auto;text-align:center;padding:16px"><p style="font-size:12px;color:#8aa4ba;margin:0">Loading PulmoVox…</p><p style="font-size:10px;color:#5a7a9a;margin-top:8px;line-height:1.5">If this never disappears, open the <strong>full project URL</strong> (with <span class="mono">/LERTZZ/</span> in the path), not only <span class="mono">username.github.io</span>.</p></div></div>
 </div>
 
 <script>
@@ -1447,8 +1473,11 @@ function getMicAccessWarning(){
 }
 
 function render(){
-  const app=document.getElementById('app');app.innerHTML='';
-  const hArea=document.getElementById('history-toggle-area');hArea.innerHTML='';
+  const app=document.getElementById('app');
+  if(!app)return;
+  app.innerHTML='';
+  const hArea=document.getElementById('history-toggle-area');
+  if(hArea)hArea.innerHTML='';
 
   // === GLOBAL MIC ACCESS WARNING BANNER ===
   var micWarn=getMicAccessWarning();
@@ -1465,7 +1494,7 @@ function render(){
     }
     app.appendChild(banner);
   }
-  if(state.assessmentHistory.length>0){
+  if(hArea&&state.assessmentHistory.length>0){
     hArea.appendChild(el('button',{style:{marginTop:'8px',padding:'5px 14px',background:state.showHistory?'rgba(0,212,170,0.15)':'rgba(0,153,221,0.1)',border:state.showHistory?'1px solid #00d4aa':'1px solid rgba(0,153,221,0.3)',borderRadius:'20px',color:state.showHistory?'#00d4aa':'#6ab8e0',fontSize:'10px',fontWeight:'600',cursor:'pointer'},onClick:()=>{state.showHistory=!state.showHistory;render();}},'📋 History ('+state.assessmentHistory.length+') '+(state.showHistory?'▲':'▼')));
   }
 
@@ -2200,30 +2229,6 @@ function render(){
   }
 }
 
-window.addEventListener('error',function(ev){
-  try{
-    var app=document.getElementById('app');
-    if(!app)return;
-    var msg=(ev&&ev.message)?ev.message:'Unknown runtime error';
-    app.innerHTML='<div class="card" style="border:1px solid rgba(255,71,87,0.45)">'+
-      '<div style="font-size:14px;color:#ff6b81;font-weight:700;margin-bottom:8px">Runtime Error</div>'+
-      '<div style="font-size:11px;color:#c8dae8;line-height:1.6">'+msg+'</div>'+
-      '<div style="font-size:10px;color:#5a7a9a;margin-top:8px">Please refresh once. If still failing, share this message.</div>'+
-    '</div>';
-  }catch(_e){}
-});
-window.addEventListener('unhandledrejection',function(ev){
-  try{
-    var app=document.getElementById('app');
-    if(!app)return;
-    var msg=(ev&&ev.reason&&ev.reason.message)?ev.reason.message:String(ev.reason||'Unknown promise rejection');
-    app.innerHTML='<div class="card" style="border:1px solid rgba(255,165,2,0.45)">'+
-      '<div style="font-size:14px;color:#ffa502;font-weight:700;margin-bottom:8px">Async Error</div>'+
-      '<div style="font-size:11px;color:#c8dae8;line-height:1.6">'+msg+'</div>'+
-      '<div style="font-size:10px;color:#5a7a9a;margin-top:8px">Please refresh once. If still failing, share this message.</div>'+
-    '</div>';
-  }catch(_e){}
-});
 try{
   render();
 }catch(e){
