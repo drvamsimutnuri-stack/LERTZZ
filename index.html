@@ -101,10 +101,10 @@ canvas.waveform{width:100%;height:70px;border-radius:8px;background:#0a1628;bord
       <span class="research-badge">v3 Research</span>
     </div>
     <p class="mono" style="color:#4a6a85;font-size:9px;letter-spacing:2px;text-transform:uppercase;">Research-Grade Acoustic Lung Prediction · Full Waveform Analysis · Fully Offline</p>
-    <p class="mono" style="color:#3a5a7a;font-size:8px;margin-top:4px">Build 2026-04-03-mobile-vad-yin</p>
+    <p class="mono" style="color:#3a5a7a;font-size:8px;margin-top:4px">Build 2026-04-03-lowconf-gate</p>
     <div id="history-toggle-area"></div>
   </div>
-  <div class="container" id="app"><div id="pulmovox-preboot" class="card" style="max-width:820px;margin:0 auto;text-align:center;padding:16px"><p style="font-size:12px;color:#8aa4ba;margin:0">Loading PulmoVox…</p><p class="mono" style="font-size:9px;color:#4a6a85;margin-top:6px">Build 2026-04-03-mobile-vad-yin — after deploy you must see this line; if not, browser is showing an old cached page.</p><p style="font-size:10px;color:#5a7a9a;margin-top:8px;line-height:1.5">Use <span class="mono">https://drvamsimutnuri-stack.github.io/LERTZZ/</span> (include <span class="mono">/LERTZZ/</span>).</p></div></div>
+  <div class="container" id="app"><div id="pulmovox-preboot" class="card" style="max-width:820px;margin:0 auto;text-align:center;padding:16px"><p style="font-size:12px;color:#8aa4ba;margin:0">Loading PulmoVox…</p><p class="mono" style="font-size:9px;color:#4a6a85;margin-top:6px">Build 2026-04-03-lowconf-gate — after deploy you must see this line; if not, browser is showing an old cached page.</p><p style="font-size:10px;color:#5a7a9a;margin-top:8px;line-height:1.5">Use <span class="mono">https://drvamsimutnuri-stack.github.io/LERTZZ/</span> (include <span class="mono">/LERTZZ/</span>).</p></div></div>
 </div>
 
 <script>
@@ -156,7 +156,7 @@ function collectSessionMeta(){
     isSecureContext:!!window.isSecureContext
   };
 }
-var PULMOVOX_BUILD_ID='2026-04-03-mobile-vad-yin';
+var PULMOVOX_BUILD_ID='2026-04-03-lowconf-gate';
 
 // === MULTILINGUAL PASSAGES ===
 const PASSAGES = {
@@ -706,6 +706,8 @@ function analyzeFullWaveform(audioBuffer, sampleRate, passageWordCount, cal) {
 function predictLungParameters(ac) {
   const { jitterScore, shimmerScore, hnrScore, breathScore, overallScore } = ac;
   const jN=jitterScore/100,sN=shimmerScore/100,hN=hnrScore/100,bN=breathScore/100,oN=overallScore/100;
+  const pitchN=ac.pitchTrackLength||0;
+  const unreliablePattern=pitchN<30||ac.pitchTrackQuality==='insufficient';
   const fev1Pct=Math.min(120,Math.max(25,40+(hN*35)+(jN*20)+(bN*15)+(Math.random()*5-2.5)));
   const fvcPct=Math.min(125,Math.max(30,45+(bN*30)+(hN*20)+(sN*15)+(Math.random()*5-2.5)));
   const fev1fvcRatio=Math.min(0.95,Math.max(0.40,(fev1Pct/fvcPct)*(0.75+oN*0.15)));
@@ -729,7 +731,12 @@ function predictLungParameters(ac) {
   else if(fev1fvcRatio>=0.70&&fvcPct<80){pattern="Restrictive";patternColor="#ffa502";patternDesc="Acoustic markers suggest possible restrictive pattern.";}
   else if(fev1fvcRatio<0.70&&fvcPct<80){pattern="Mixed";patternColor="#ff6348";patternDesc="Acoustic markers suggest a mixed obstructive-restrictive pattern.";}
   else if(oN>0.7){patternDesc="Acoustic parameters within expected healthy ranges.";}
-  return{spirometry:{fev1Pct,fvcPct,fev1fvcRatio,pef,fef2575},lungVolumes:{tlcPct,rvPct,frcPct,icPct,vcPct},oscillometry:{r5,r20,r5r20,x5,fres,ax},mechanics:{compliance,elastance,resistance},pattern,patternColor,patternDesc};
+  if(unreliablePattern){
+    pattern="Indeterminate";
+    patternColor="#6a8a9a";
+    patternDesc="Too few pitched-voice frames in this recording for stable lung mapping. The display below is not comparable to a laptop run with a dense pitch track — use “Sustained Vowel + Counting,” hold a loud steady “ahhh” near the mic, then continue.";
+  }
+  return{spirometry:{fev1Pct,fvcPct,fev1fvcRatio,pef,fef2575},lungVolumes:{tlcPct,rvPct,frcPct,icPct,vcPct},oscillometry:{r5,r20,r5r20,x5,fres,ax},mechanics:{compliance,elastance,resistance},pattern,patternColor,patternDesc,interpretationLowConfidence:!!unreliablePattern};
 }
 
 // === APP STATE ===
@@ -2102,6 +2109,16 @@ function render(){
       wrap.appendChild(methodBadge);
     }
 
+    const lowConf=!!(lp.interpretationLowConfidence||(r.pitchTrackLength||0)<30||r.pitchTrackQuality==='insufficient');
+    if(lowConf){
+      const hopCount=Math.max(1,Math.floor(r.duration*100));
+      const pctPitch=((r.pitchTrackLength||0)/hopCount*100).toFixed(1);
+      const ban=el('div',{style:{background:'rgba(255,165,2,0.12)',border:'1px solid rgba(255,165,2,0.35)',borderRadius:'10px',padding:'12px 14px',marginBottom:'12px',fontSize:'11px',color:'#e8d4a8',lineHeight:'1.55'}});
+      ban.appendChild(el('div',{style:{fontWeight:'700',color:'#ffa502',marginBottom:'6px'}},'Low confidence — do not compare this score to laptop'));
+      ban.appendChild(el('div',{innerHTML:'Only '+r.pitchTrackLength+' windows passed pitch detection in '+r.duration.toFixed(1)+'s (~'+pctPitch+'% of 10 ms analysis hops). The acoustic score blends jitter/shimmer (unstable when pitch is sparse) with pause detection across the whole passage, so a low score usually reflects mic/coverage, not a true lung difference from your laptop run.'}));
+      wrap.appendChild(ban);
+    }
+
     // Score + Pattern
     const summaryCard=el('div',{className:'card',style:{border:'1px solid '+lp.patternColor+'30',textAlign:'center'}});
     const summRow=el('div',{style:{display:'flex',justifyContent:'center',gap:'24px',marginBottom:'12px'}});
@@ -2178,7 +2195,7 @@ function render(){
         }});
         ptWarn.appendChild(el('div',{style:{fontSize:'11px',fontWeight:'700',color:ptq==='insufficient'?'#ff6b81':'#ffa502',marginBottom:'4px'}},
           ptq==='insufficient'
-            ? '⚠️ Pitch track empty ('+r.pitchTrackLength+' voiced frames) — Jitter, Shimmer and F0 cannot be computed'
+            ? '⚠️ Pitch track very thin ('+r.pitchTrackLength+' voiced frames) — Jitter, Shimmer and F0 are barely supported'
             : '⚠️ Pitch track thin ('+r.pitchTrackLength+' frames) — Perturbation metrics may be unreliable'
         ));
         ptWarn.appendChild(el('div',{style:{fontSize:'10px',color:'#c8dae8',lineHeight:'1.6'}},
