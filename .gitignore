@@ -1,0 +1,4 @@
+.DS_Store
+.pdfdeps/
+.pydeps/
+*.code-workspace

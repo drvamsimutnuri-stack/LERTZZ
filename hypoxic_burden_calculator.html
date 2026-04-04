@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hypoxic Burden — Calculator &amp; Summary</title>
+<style>
+  :root {
+    --bg: #0c1220; --card: #121a2b; --accent: #3b82f6; --accentL: #93c5fd;
+    --danger: #ef4444; --warn: #f59e0b; --success: #22c55e; --teal: #2dd4bf;
+    --purple: #a78bfa; --text: #e8eef7; --muted: #94a3b8; --dim: #64748b;
+    --border: #1e293b; --inputBg: #0f172a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.55; font-size:15px; }
+  .wrap { max-width:900px; margin:0 auto; padding:0 20px; }
+
+  .hero { background:linear-gradient(145deg,#0f172a 0%,#1e3a5f 45%,#0f172a 100%); padding:40px 20px 32px; border-bottom:1px solid var(--border); }
+  .hero h1 { font-size:clamp(1.35rem,4vw,1.75rem); font-weight:800; letter-spacing:-0.03em; color:var(--text); line-height:1.2; margin-bottom:8px; }
+  .hero p { color:var(--muted); font-size:14px; max-width:42rem; }
+
+  .tabs { background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  .tabs .inner { display:flex; flex-wrap:wrap; gap:0; }
+  .tabs button { padding:14px 18px; background:none; border:none; color:var(--muted); font-weight:500; font-size:13px; cursor:pointer; border-bottom:2px solid transparent; font-family:inherit; }
+  .tabs button.active { color:var(--accentL); font-weight:700; border-bottom-color:var(--accent); }
+
+  .card { background:var(--card); border-radius:12px; padding:22px 24px; border:1px solid var(--border); margin-bottom:18px; }
+  .card h2 { font-size:18px; font-weight:700; color:var(--accentL); margin-bottom:10px; }
+  .card h3 { font-size:15px; font-weight:700; color:var(--teal); margin:14px 0 8px; }
+  .card p, .card li { font-size:14px; color:var(--muted); }
+  .card ul { margin:8px 0 0 1.2rem; }
+  .card li { margin:6px 0; }
+
+  .info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin:12px 0; }
+  .info-box { background:var(--inputBg); padding:12px 14px; border-radius:8px; border:1px solid var(--border); }
+  .info-box .title { font-size:12px; font-weight:700; color:var(--accentL); margin-bottom:4px; }
+  .info-box .desc { font-size:12px; line-height:1.55; color:var(--dim); }
+
+  .formula { margin:14px 0; padding:16px; background:rgba(139,92,246,.08); border-radius:10px; border:1px solid rgba(139,92,246,.22); text-align:center; }
+  .formula .label { font-size:11px; color:var(--purple); font-weight:600; margin-bottom:6px; }
+  .formula .expr { font-size:16px; font-weight:700; font-family:ui-monospace,SFMono-Regular,monospace; }
+  .formula .unit { font-size:11px; color:var(--dim); margin-top:6px; }
+
+  .t-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin:8px 0; }
+  th { padding:8px 10px; text-align:left; background:var(--inputBg); color:var(--dim); font-weight:700; font-size:11px; border-bottom:2px solid var(--border); }
+  td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+
+  label.field-label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  input[type=number], input[type=text] {
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border);
+    background:var(--inputBg); color:var(--text); font-size:15px; font-family:ui-monospace,monospace;
+    outline:none;
+  }
+  input:focus { border-color:var(--accent); }
+  .hint { font-size:11px; color:var(--dim); margin-top:2px; }
+
+  .btn { padding:10px 20px; border-radius:8px; border:none; font-weight:600; font-size:14px; cursor:pointer; font-family:inherit; }
+  .btn-accent { background:rgba(59,130,246,.12); color:var(--accentL); border:1px solid rgba(59,130,246,.35); }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),#6366f1); color:#fff; }
+  .btn-print { background:linear-gradient(135deg,#b91c1c,#dc2626); color:#fff; }
+  .btn-sm { padding:7px 14px; font-size:13px; }
+
+  .gauge-bar { height:26px; border-radius:13px; background:#1e293b; overflow:hidden; position:relative; }
+  .gauge-bg { background:linear-gradient(90deg,var(--success),#84cc16,var(--warn),#fb923c,var(--danger)); height:100%; width:100%; position:absolute; opacity:.22; }
+  .gauge-fill { height:100%; border-radius:13px; transition:width .5s ease; }
+  .gauge-needle { position:absolute; top:-5px; width:3px; height:36px; background:#fff; border-radius:2px; transform:translateX(-50%); }
+
+  .metrics-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:16px; }
+  .metric-box { background:var(--inputBg); padding:12px; border-radius:8px; border:1px solid var(--border); text-align:center; }
+  .metric-box .mlabel { font-size:10px; color:var(--dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em; }
+  .metric-box .mval { font-size:17px; font-weight:700; font-family:ui-monospace,monospace; }
+
+  .event-row { display:grid; grid-template-columns:28px 1fr 1fr 1fr 1fr 32px; gap:8px; align-items:end; margin-bottom:6px; }
+  .event-row .idx { font-size:11px; color:var(--dim); padding-bottom:10px; }
+  .area-display { padding:8px 10px; border-radius:8px; background:rgba(59,130,246,.1); color:var(--accentL); font-size:14px; font-family:ui-monospace,monospace; border:1px solid rgba(59,130,246,.2); }
+  .remove-btn { background:none; border:none; color:var(--danger); cursor:pointer; font-size:18px; padding-bottom:8px; opacity:.85; }
+
+  .interp-box { padding:18px; border-radius:10px; }
+  .interp-icon { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; }
+
+  .warn-card { border-color:rgba(245,158,11,.25) !important; }
+
+  .section { display:none; padding:26px 0 48px; }
+  .section.active { display:block; }
+
+  .mode-toggle { display:flex; background:var(--inputBg); border-radius:8px; border:1px solid var(--border); overflow:hidden; margin-bottom:16px; }
+  .mode-toggle button { flex:1; padding:10px 12px; border:none; background:none; color:var(--muted); font-weight:500; font-size:12px; cursor:pointer; font-family:inherit; }
+  .mode-toggle button.active { background:rgba(59,130,246,.15); color:var(--accentL); font-weight:700; }
+
+  .palm-letter { display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; border-radius:6px; font-size:11px; font-weight:800; background:rgba(45,212,191,.15); color:var(--teal); margin-right:6px; }
+
+  .ref-list { margin:10px 0 0 1rem; font-size:13px; color:var(--muted); line-height:1.65; }
+  .ref-list li { margin:8px 0; }
+  .ref-list cite { font-style:normal; color:var(--text); font-size:12px; }
+  .disclaimer-box { border:1px solid rgba(245,158,11,.35); background:rgba(245,158,11,.06); border-radius:10px; padding:14px 16px; margin-top:12px; font-size:13px; color:var(--muted); line-height:1.65; }
+  .disclaimer-box strong { color:var(--warn); }
+
+  @media(max-width:720px) {
+    .event-row { grid-template-columns:22px 1fr 1fr 1fr 28px; }
+    .event-row .area-col { display:none; }
+  }
+
+  @media print {
+    .tabs, .btn, .hero { display:none !important; }
+    body { background:#fff; color:#111; }
+    .section { display:block !important; page-break-inside:avoid; }
+    .card { border:1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>Hypoxic burden from sleep study data</h1>
+    <p>Research and educational tool: estimate hypoxic burden when it is not on the report, compare to published risk bands, and document PALM-oriented physiology clues. <strong style="color:var(--accentL)">All outputs require clinical correlation</strong> with the source sleep study, comorbidities, and examination — not for isolated diagnostic or treatment decisions. No identifiers stored; export via Print / Save as PDF.</p>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="wrap inner">
+    <button type="button" class="active" data-tab="article">Summary</button>
+    <button type="button" data-tab="direct">Direct (events)</button>
+    <button type="button" data-tab="indirect">From report totals</button>
+    <button type="button" data-tab="palm">PALM &amp; report clues</button>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div id="tab-article" class="section active">
+<div class="wrap">
+  <div class="card">
+    <h2>What is hypoxic burden (HB)?</h2>
+    <p>HB summarizes how much time-weighted desaturation occurs across the night — it reflects both how far SpO₂ drops and how long it stays low around respiratory events. Units are <strong>%·min/h</strong> (percent–minutes of desaturation “area” per hour of sleep).</p>
+    <p style="margin-top:10px">When full oximetry waveforms are not available, HB can be <em>approximated</em> from common report lines (ODI, average depth, average duration) or from a list of event depths and durations.</p>
+  </div>
+  <div class="card">
+    <h2>Formulas used here</h2>
+    <div class="formula">
+      <div class="label">Direct (triangular approximation per event)</div>
+      <div class="expr">HB = Σ [ ½ × (SpO₂<sub>pre</sub> − SpO₂<sub>nadir</sub>) × (duration in min) ] ÷ TST (h)</div>
+      <div class="unit">Sum over scored events; TST = total sleep time in hours.</div>
+    </div>
+    <div class="formula">
+      <div class="label">Indirect (summary-level estimate)</div>
+      <div class="expr">HB ≈ ODI × ½ × D<sub>avg</sub> × (T<sub>avg</sub> / 60)</div>
+      <div class="unit">ODI = desaturations/h; D<sub>avg</sub> = mean depth (%); T<sub>avg</sub> = mean duration (s).</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Cardiovascular risk bands (HB)</h2>
+    <p style="margin-bottom:10px">Illustrative stratification synthesizing published cohort data — not a formal guideline or society-endorsed staging. Must be interpreted with the full sleep study, symptoms, and cardiovascular history.</p>
+    <div class="t-wrap" id="severity-table-article"></div>
+    <h3>References underpinning HB and risk context</h3>
+    <ul class="ref-list">
+      <li><cite>Azarbarzin A, et al.</cite> Hypoxic burden of sleep apnoea and cardiovascular mortality (MrOS, SHHS). <em>Eur Heart J.</em> 2019;40(14):1149–1157.</li>
+      <li><cite>Kim J, et al.</cite> Sleep-disordered breathing and blood pressure (MESA). <em>Thorax.</em> 2020;75(5):422–429.</li>
+      <li><cite>Blanchard M, et al.</cite> Hypoxic burden and stroke (ERMES). <em>Eur Respir J.</em> 2021;58(5):2003343.</li>
+      <li><cite>Esmaeili A, et al.</cite> Automated hypoxic burden from oximetry vs scoring-based HB. <em>Ann Am Thorac Soc.</em> 2023;20(5):678–686.</li>
+      <li><cite>RICCADSA secondary analysis.</cite> Hypoxic burden and MACCE in CAD + OSA. <em>Chest.</em> 2025 (epub ahead of print).</li>
+      <li><cite>Zeng J, et al.</cite> HB thresholds and ASCVD / myocardial ischemia. <em>Nat Sci Sleep.</em> 2025;2:112–124.</li>
+    </ul>
+    <div class="disclaimer-box">
+      <strong>Research use &amp; clinical correlation.</strong> This page does not replace polysomnography interpretation, does not establish a diagnosis, and is not cleared as a medical device. Risk bands are derived from heterogeneous cohorts; apply only alongside clinician judgment and primary report metrics (AHI, symptoms, ECG, comorbidities).
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- DIRECT -->
+<div id="tab-direct" class="section">
+<div class="wrap">
+  <div class="card">
+    <h2>Direct calculation</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Enter pre-event SpO₂, nadir SpO₂, and duration for each event (or a representative sample). Uses triangular area per event.</p>
+    <label class="field-label">Total sleep time TST (hours)</label>
+    <input type="number" id="d-tst" value="7" min="0.5" max="16" step="0.1">
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <h3 style="margin:0">Events</h3>
+      <button type="button" class="btn btn-accent btn-sm" id="add-event">+ Add row</button>
+    </div>
+    <div id="direct-events"></div>
+  </div>
+  <div class="card" id="direct-results" style="display:none">
+    <h3 style="margin-top:0">Results</h3>
+    <div id="direct-gauge"></div>
+    <div id="direct-metrics" class="metrics-grid"></div>
+  </div>
+  <div class="card" id="direct-interp" style="display:none">
+    <h3 style="margin-top:0;color:var(--accentL)">Risk interpretation</h3>
+    <div id="direct-interp-box"></div>
+  </div>
+  <div class="card">
+    <h3>References — direct (event-level) approach</h3>
+    <ul class="ref-list">
+      <li><cite>Azarbarzin A, et al.</cite> Original HB definition: integrated desaturation area linked to respiratory events, expressed per hour of sleep. <em>Eur Heart J.</em> 2019;40(14):1149–1157.</li>
+      <li><cite>Esmaeili A, et al.</cite> Automated / simplified methods vs manually scored HB; strong agreement when oximetry is well aligned to events. <em>Ann Am Thorac Soc.</em> 2023;20(5):678–686.</li>
+    </ul>
+    <p style="font-size:13px;color:var(--muted);margin-top:10px">This calculator sums triangular areas (½ × depth × duration) per row. That matches common teaching approximations to waveform area; full research pipelines use continuous SpO₂ with event windows and preprocessing per the primary publications.</p>
+  </div>
+  <div class="card warn-card">
+    <strong style="color:var(--warn)">Disclaimer:</strong> <span style="font-size:13px;color:var(--muted)">For <strong>research and education</strong> only. Results must be <strong>clinically correlated</strong> with the native sleep study, artifact review, and scoring rules. Not a substitute for laboratory or scored HB from the recording system when available.</span>
+  </div>
+</div>
+</div>
+
+<!-- INDIRECT -->
+<div id="tab-indirect" class="section">
+<div class="wrap">
+  <div class="card">
+    <h2>From typical report numbers</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Use ODI (or compatible index), average desaturation depth, and average event length. Depth can be entered directly or from mean baseline minus mean nadir.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <label class="field-label">ODI (events per hour)</label>
+        <input type="number" id="i-odi" value="30" min="0" step="0.1">
+        <div class="hint">As defined on your report (e.g. ≥3% or ≥4% drops).</div>
+      </div>
+      <div>
+        <label class="field-label">Average event duration (seconds)</label>
+        <input type="number" id="i-dur" value="25" min="1" step="1">
+        <div class="hint">If absent, ~20–35 s is a rough mid-range for mixed OSA.</div>
+      </div>
+    </div>
+    <div style="margin-top:14px" class="mode-toggle">
+      <button type="button" class="active" id="depth-mode-direct">Depth directly (%)</button>
+      <button type="button" id="depth-mode-calc">Baseline − nadir</button>
+    </div>
+    <div id="depth-direct-inputs">
+      <label class="field-label">Mean desaturation depth (%)</label>
+      <input type="number" id="i-depth" value="6" min="0" step="0.1">
+    </div>
+    <div id="depth-calc-inputs" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <label class="field-label">Mean baseline SpO₂ (%)</label>
+          <input type="number" id="i-baseline" value="95" min="70" max="100" step="0.1">
+        </div>
+        <div>
+          <label class="field-label">Mean nadir SpO₂ (%)</label>
+          <input type="number" id="i-nadir" value="89" min="50" max="100" step="0.1">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="indirect-results">
+    <h3 style="margin-top:0">Estimated HB</h3>
+    <div id="indirect-gauge"></div>
+    <div id="indirect-breakdown" style="margin-top:14px"></div>
+  </div>
+  <div class="card" id="indirect-interp">
+    <h3 style="margin-top:0;color:var(--accentL)">Risk interpretation</h3>
+    <div id="indirect-interp-box"></div>
+  </div>
+  <div class="card">
+    <h3>References — indirect (summary) estimator</h3>
+    <ul class="ref-list">
+      <li><cite>Azarbarzin A, et al.</cite> HB conceptualized as burden of desaturation integrated over time; frequency and mean severity interact. <em>Eur Heart J.</em> 2019;40(14):1149–1157.</li>
+      <li><cite>Indirect formula here:</cite> HB ≈ (events/h) × (mean triangular area per event), i.e. ODI × ½ × mean depth × (mean duration in minutes). Valid as a <em>screening estimate</em> when event-level oximetry is unavailable; heterogeneity of events increases error.</li>
+    </ul>
+    <p style="font-size:13px;color:var(--muted);margin-top:10px">Home sleep tests and summary reports often lack mean depth/duration — use literature defaults only with explicit uncertainty and clinical correlation.</p>
+  </div>
+  <div class="card warn-card">
+    <strong style="color:var(--warn)">Disclaimer:</strong> <span style="font-size:13px;color:var(--muted)">For <strong>research and education</strong> only. Assumes uniform depth and duration across events; real physiology varies. Must be <strong>clinically correlated</strong> with the full report (AHI/ODI definition, TST, comorbid lung disease, etc.).</span>
+  </div>
+</div>
+</div>
+
+<!-- PALM -->
+<div id="tab-palm" class="section">
+<div class="wrap">
+  <div class="card">
+    <h2>PALM — pathophysiology map</h2>
+    <p style="margin-bottom:12px">PALM groups the four classic <strong>endotypes</strong> that contribute to obstructive sleep apnea severity. It is used to reason about <em>why</em> apnea occurs and which mechanisms may dominate. Full quantification often needs specialized testing; standard polysomnography only provides <strong>clues</strong>.</p>
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="title"><span class="palm-letter">P</span> Pharyngeal muscle responsiveness</div>
+        <div class="desc">How effectively dilator muscles stiffen the airway after a challenge. Poor responsiveness → more collapse for a given pressure.</div>
+      </div>
+      <div class="info-box">
+        <div class="title"><span class="palm-letter">A</span> Anatomy / collapsibility (Pcrit)</div>
+        <div class="desc">Structural predisposition: smaller airway, crowding, obesity-related load — often tracks with severity and positional dependence.</div>
+      </div>
+      <div class="info-box">
+        <div class="title"><span class="palm-letter">L</span> Arousal threshold</div>
+        <div class="desc">Ease of cortical arousal to respiratory stimuli. A low threshold fragments sleep; a high threshold may allow prolonged obstructive events.</div>
+      </div>
+      <div class="info-box">
+        <div class="title"><span class="palm-letter">M</span> Loop gain (ventilatory control)</div>
+        <div class="desc">Controller “gain” — high loop gain predisposes to periodic breathing and can interact with obstruction; central events become more relevant.</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>What your report may show (proxies)</h2>
+    <p style="margin-bottom:10px">Optional fields below print on the PDF summary. They do <strong>not</strong> diagnose an endotype — they document what was available.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+      <div>
+        <label class="field-label">Central apnea index (per hour)</label>
+        <input type="number" id="p-cai" placeholder="—" min="0" step="0.1">
+      </div>
+      <div>
+        <label class="field-label">Arousal index (per hour)</label>
+        <input type="number" id="p-ari" placeholder="—" min="0" step="0.1">
+      </div>
+      <div>
+        <label class="field-label">Supine AHI (if given)</label>
+        <input type="number" id="p-supa" placeholder="—" min="0" step="0.1">
+      </div>
+      <div>
+        <label class="field-label">Non-supine AHI (if given)</label>
+        <input type="number" id="p-nsup" placeholder="—" min="0" step="0.1">
+      </div>
+    </div>
+    <p style="margin-top:12px;font-size:13px;color:var(--muted)"><strong>Reading hints (non-diagnostic):</strong> large supine–non-supine gap → anatomy/position often prominent; meaningful central apnea burden → consider loop gain / controller instability in differential; very high arousal index → sleep fragmentation (multiple drivers). Combine with HB and symptoms for shared decision-making.</p>
+    <h3>References — OSA endotypes / PALM framing</h3>
+    <ul class="ref-list">
+      <li><cite>Eckert DJ, et al.</cite> Phenotypic causes of OSA — collapsibility, loop gain, arousal threshold, muscle responsiveness. <em>Am J Respir Crit Care Med.</em> 2013;188(5):596–603.</li>
+      <li><cite>Wellman A, et al.</cite> Pathophysiology and endotypic approaches to targeted therapy. <em>Proc Am Thorac Soc.</em> 2008;5(2):156–163.</li>
+    </ul>
+    <div class="disclaimer-box" style="margin-top:12px">
+      <strong>Clinical correlation.</strong> PALM is a reasoning framework; endotype assignment from routine PSG alone is limited. Use optional fields only to mirror what the report states, not to label endotypes without specialized testing.
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="wrap" style="padding:8px 20px 40px">
+  <div class="card" style="margin-bottom:0">
+    <h2 style="margin-bottom:8px">Optional label for PDF only</h2>
+    <label class="field-label">Internal reference (no PHI; leave blank if unsure)</label>
+    <input type="text" id="pdf-ref" placeholder="e.g. Case note ID — never patient name" autocomplete="off">
+    <p style="margin-top:10px;font-size:12px;color:var(--dim)">Export opens the print dialog — choose “Save as PDF”. No data leaves your browser.</p>
+    <div class="disclaimer-box" style="margin-top:12px">
+      <strong>PDF content.</strong> Includes HB calculation summary, cardiovascular band table with literature references, PALM notes, and a research / clinical-correlation disclaimer. Intended for documentation in studies when correlated with primary clinical data.
+    </div>
+    <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <button type="button" class="btn btn-print" id="btn-export-pdf">Export PDF summary</button>
+      <span style="font-size:12px;color:var(--dim)">Includes references, disclaimers, and PALM fields.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const severityScale = [
+    { min:0, max:20, label:'Minimal', color:'#22c55e', risk:'Low', cvRisk:'Baseline population risk', hr:'Reference', action:'Reassurance; lifestyle counselling' },
+    { min:20, max:40, label:'Mild', color:'#84cc16', risk:'Low–moderate', cvRisk:'Marginally elevated', hr:'~1.0–1.2', action:'Weight management, follow-up' },
+    { min:40, max:73, label:'Moderate', color:'#f59e0b', risk:'Moderate', cvRisk:'Elevated hypertension & CVD risk', hr:'~1.2–1.5', action:'Consider PAP if OSA; comorbidity review' },
+    { min:73, max:120, label:'High', color:'#fb923c', risk:'High', cvRisk:'Elevated MACCE risk in cohort studies', hr:'~1.5–2.0', action:'Treat OSA; cardiac risk as indicated' },
+    { min:120, max:1e9, label:'Very high', color:'#ef4444', risk:'Very high', cvRisk:'Strong mortality/stroke associations in literature', hr:'> 2.0 (highest bands)', action:'Urgent OSA therapy; cardiology as indicated' },
+  ];
+
+  function getSev(hb) {
+    const x = Number(hb);
+    if (Number.isNaN(x)) return severityScale[0];
+    return severityScale.find(function (s) { return x >= s.min && x < s.max; }) || severityScale[4];
+  }
+
+  function renderSeverityTable(container) {
+    if (!container) return;
+    var rows = severityScale.map(function (s) {
+      var range = s.min === 120 ? '≥ 120' : s.min + ' – ' + s.max;
+      return '<tr><td style="font-weight:700;font-family:ui-monospace,monospace;color:' + s.color + '">' + range + '</td><td style="font-weight:600;color:' + s.color + '">' + s.label + '</td><td>' + s.risk + '</td><td style="font-size:11px;color:#94a3b8">' + s.cvRisk + '</td><td style="font-family:ui-monospace,monospace">' + s.hr + '</td><td style="font-size:11px;color:#94a3b8">' + s.action + '</td></tr>';
+    }).join('');
+    container.innerHTML = '<table><thead><tr><th>HB (%·min/h)</th><th>Band</th><th>CV risk (illustrative)</th><th>Associations</th><th>HR context</th><th>Actions (illustrative)</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderGauge(hb, container) {
+    var sev = getSev(hb);
+    var pct = Math.min(hb / 200, 1) * 100;
+    container.innerHTML =
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px;color:#64748b"><span>0</span><span>50</span><span>100</span><span>150</span><span>200+</span></div>' +
+      '<div class="gauge-bar"><div class="gauge-bg"></div><div class="gauge-fill" style="width:' + pct + '%;background:linear-gradient(90deg,#22c55e,' + sev.color + ');box-shadow:0 0 14px ' + sev.color + '40"></div><div class="gauge-needle" style="left:' + pct + '%"></div></div>' +
+      '<div style="text-align:center;margin-top:12px"><span style="font-size:28px;font-weight:800;color:' + sev.color + ';font-family:ui-monospace,monospace">' + hb.toFixed(1) + '</span><span style="font-size:13px;color:#94a3b8;margin-left:6px">%·min/h</span></div>' +
+      '<div style="text-align:center;margin-top:6px"><span style="display:inline-block;padding:4px 14px;border-radius:20px;background:' + sev.color + '22;color:' + sev.color + ';font-weight:700;font-size:13px;border:1px solid ' + sev.color + '44">' + sev.label + ' — ' + sev.risk + ' risk (illustrative)</span></div>';
+  }
+
+  function renderInterp(hb, container) {
+    var sev = getSev(hb);
+    var icon = hb < 20 ? '✓' : hb < 73 ? '!' : '⚡';
+    container.innerHTML =
+      '<div class="interp-box" style="padding:18px;border-radius:10px;border:2px solid ' + sev.color + '40;background:' + sev.color + '0d">' +
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' +
+      '<div class="interp-icon" style="background:' + sev.color + '22;border:2px solid ' + sev.color + '">' + icon + '</div>' +
+      '<div><div style="font-size:16px;font-weight:700;color:' + sev.color + '">' + sev.label + ' burden</div><div style="font-size:12px;color:#94a3b8">' + sev.risk + ' cardiovascular risk (illustrative)</div></div></div>' +
+      '<div style="font-size:13px;line-height:1.65"><strong>Association:</strong> ' + sev.cvRisk + '</div>' +
+      '<div style="font-size:13px;line-height:1.65"><strong>Cohort HR context:</strong> ' + sev.hr + '</div>' +
+      '<div style="font-size:13px;line-height:1.65"><strong>Illustrative next step:</strong> ' + sev.action + '</div>' +
+      '<div style="font-size:11px;color:#64748b;margin-top:10px;border-top:1px solid rgba(148,163,184,.25);padding-top:8px">Research / educational context only — correlate with the native sleep study, AHI, symptoms, and comorbidities before clinical use.</div></div>';
+  }
+
+  /* Tabs */
+  document.querySelectorAll('.tabs button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-tab');
+      document.querySelectorAll('.tabs button').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.section').forEach(function (s) { s.classList.remove('active'); });
+      btn.classList.add('active');
+      var el = document.getElementById('tab-' + id);
+      if (el) el.classList.add('active');
+      window.scrollTo(0, 0);
+    });
+  });
+
+  renderSeverityTable(document.getElementById('severity-table-article'));
+
+  /* Direct */
+  var directEvents = [
+    { pre: 95, nadir: 87, dur: 25 },
+    { pre: 94, nadir: 85, dur: 32 },
+    { pre: 96, nadir: 88, dur: 20 },
+  ];
+
+  function renderDirectEvents() {
+    var container = document.getElementById('direct-events');
+    container.innerHTML = directEvents.map(function (e, i) {
+      var area = e.pre > e.nadir ? ((e.pre - e.nadir) * e.dur / 60 / 2).toFixed(2) : '—';
+      return '<div class="event-row">' +
+        '<span class="idx">#' + (i + 1) + '</span>' +
+        '<div>' + (i === 0 ? '<label class="field-label">Pre SpO₂ (%)</label>' : '') + '<input type="number" value="' + e.pre + '" min="70" max="100" step="0.1" data-i="' + i + '" data-f="pre"></div>' +
+        '<div>' + (i === 0 ? '<label class="field-label">Nadir (%)</label>' : '') + '<input type="number" value="' + e.nadir + '" min="50" max="100" step="0.1" data-i="' + i + '" data-f="nadir"></div>' +
+        '<div>' + (i === 0 ? '<label class="field-label">Duration (s)</label>' : '') + '<input type="number" value="' + e.dur + '" min="1" max="600" data-i="' + i + '" data-f="dur"></div>' +
+        '<div class="area-col">' + (i === 0 ? '<label class="field-label">Area</label>' : '') + '<div class="area-display">' + area + '</div></div>' +
+        '<button type="button" class="remove-btn" data-remove="' + i + '">×</button></div>';
+    }).join('');
+
+    container.querySelectorAll('input[data-f]').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        var i = +inp.getAttribute('data-i');
+        var f = inp.getAttribute('data-f');
+        var v = inp.value === '' ? '' : Number(inp.value);
+        directEvents[i][f] = v;
+        renderDirectEvents();
+      });
+    });
+    container.querySelectorAll('[data-remove]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        directEvents.splice(+b.getAttribute('data-remove'), 1);
+        renderDirectEvents();
+      });
+    });
+    calcDirect();
+  }
+
+  document.getElementById('add-event').addEventListener('click', function () {
+    directEvents.push({ pre: 95, nadir: 88, dur: 22 });
+    renderDirectEvents();
+  });
+
+  function calcDirect() {
+    var tst = parseFloat(document.getElementById('d-tst').value) || 7;
+    var valid = directEvents.filter(function (e) {
+      return e.pre !== '' && e.nadir !== '' && e.dur !== '' && e.pre > e.nadir;
+    });
+    if (valid.length === 0) {
+      document.getElementById('direct-results').style.display = 'none';
+      document.getElementById('direct-interp').style.display = 'none';
+      window._lastHB = null;
+      window._lastMode = null;
+      return;
+    }
+    var areas = valid.map(function (e) { return (e.pre - e.nadir) * e.dur / 60 / 2; });
+    var totalArea = areas.reduce(function (a, b) { return a + b; }, 0);
+    var hb = totalArea / tst;
+    var mDepth = valid.reduce(function (a, e) { return a + (e.pre - e.nadir); }, 0) / valid.length;
+    var mDur = valid.reduce(function (a, e) { return a + e.dur; }, 0) / valid.length;
+    var mNadir = valid.reduce(function (a, e) { return a + e.nadir; }, 0) / valid.length;
+
+    document.getElementById('direct-results').style.display = 'block';
+    document.getElementById('direct-interp').style.display = 'block';
+    renderGauge(hb, document.getElementById('direct-gauge'));
+    document.getElementById('direct-metrics').innerHTML = [
+      ['Total area', totalArea.toFixed(2) + ' %·min', '#3b82f6'],
+      ['Mean depth', mDepth.toFixed(1) + '%', '#f59e0b'],
+      ['Mean duration', mDur.toFixed(0) + ' s', '#2dd4bf'],
+      ['Mean nadir', mNadir.toFixed(1) + '%', '#a78bfa'],
+    ].map(function (x) {
+      return '<div class="metric-box"><div class="mlabel">' + x[0] + '</div><div class="mval" style="color:' + x[2] + '">' + x[1] + '</div></div>';
+    }).join('');
+    renderInterp(hb, document.getElementById('direct-interp-box'));
+
+    window._directResults = { hb: hb, totalArea: totalArea, mDepth: mDepth, mDur: mDur, mNadir: mNadir, tst: tst, events: valid, mode: 'direct' };
+    window._lastHB = hb;
+    window._lastMode = 'direct';
+  }
+
+  document.getElementById('d-tst').addEventListener('input', calcDirect);
+
+  /* Indirect */
+  var depthMode = 'direct';
+  function setDepthMode(mode) {
+    depthMode = mode;
+    document.getElementById('depth-direct-inputs').style.display = mode === 'direct' ? 'block' : 'none';
+    document.getElementById('depth-calc-inputs').style.display = mode === 'calc' ? 'block' : 'none';
+    document.getElementById('depth-mode-direct').classList.toggle('active', mode === 'direct');
+    document.getElementById('depth-mode-calc').classList.toggle('active', mode === 'calc');
+    calcIndirect();
+  }
+  document.getElementById('depth-mode-direct').addEventListener('click', function () { setDepthMode('direct'); });
+  document.getElementById('depth-mode-calc').addEventListener('click', function () { setDepthMode('calc'); });
+
+  function calcIndirect() {
+    var odi = parseFloat(document.getElementById('i-odi').value) || 0;
+    var dur = parseFloat(document.getElementById('i-dur').value) || 25;
+    var depth;
+    if (depthMode === 'direct') {
+      depth = parseFloat(document.getElementById('i-depth').value) || 0;
+    } else {
+      var bl = parseFloat(document.getElementById('i-baseline').value) || 95;
+      var nad = parseFloat(document.getElementById('i-nadir').value) || 89;
+      depth = Math.max(0, bl - nad);
+    }
+    var avgArea = 0.5 * depth * (dur / 60);
+    var hb = odi * avgArea;
+    renderGauge(hb, document.getElementById('indirect-gauge'));
+    document.getElementById('indirect-breakdown').innerHTML =
+      '<div class="metrics-grid">' +
+      '<div class="metric-box"><div class="mlabel">ODI</div><div class="mval" style="color:#3b82f6">' + odi.toFixed(1) + '/h</div></div>' +
+      '<div class="metric-box"><div class="mlabel">Avg depth</div><div class="mval" style="color:#f59e0b">' + depth.toFixed(1) + '%</div></div>' +
+      '<div class="metric-box"><div class="mlabel">Avg duration</div><div class="mval" style="color:#2dd4bf">' + dur.toFixed(0) + ' s</div></div>' +
+      '<div class="metric-box"><div class="mlabel">Avg area/event</div><div class="mval" style="color:#a78bfa">' + avgArea.toFixed(2) + '</div></div></div>' +
+      '<div style="margin-top:12px;padding:12px 14px;background:var(--inputBg);border-radius:8px;font-size:13px;color:var(--muted);font-family:ui-monospace,monospace;text-align:center">' +
+      'HB ≈ ' + odi.toFixed(1) + ' × ½ × ' + depth.toFixed(1) + ' × (' + dur + '÷60) = <strong style="color:var(--text)">' + hb.toFixed(1) + ' %·min/h</strong></div>';
+    renderInterp(hb, document.getElementById('indirect-interp-box'));
+    window._indirectResults = { hb: hb, odi: odi, depth: depth, dur: dur, avgArea: avgArea, mode: 'indirect' };
+    window._lastHB = hb;
+    window._lastMode = 'indirect';
+  }
+
+  ['i-odi', 'i-dur', 'i-depth', 'i-baseline', 'i-nadir'].forEach(function (id) {
+    var n = document.getElementById(id);
+    if (n) n.addEventListener('input', calcIndirect);
+  });
+
+  function severityTableHTML() {
+    return severityScale.map(function (s) {
+      var range = s.min === 120 ? '≥ 120' : s.min + ' – ' + s.max;
+      return '<tr><td style="color:' + s.color + ';font-weight:700">' + range + '</td><td style="color:' + s.color + '">' + s.label + '</td><td>' + s.risk + '</td><td>' + s.cvRisk + '</td><td>' + s.hr + '</td><td>' + s.action + '</td></tr>';
+    }).reduce(function (acc, row) { return acc + row; }, '<table><thead><tr><th>HB (%·min/h)</th><th>Band</th><th>CV risk</th><th>Notes</th><th>HR context</th><th>Illustrative action</th></tr></thead><tbody>') + '</tbody></table>';
+  }
+
+  var pdfCSS = '@page{size:A4;margin:16mm}body{font-family:system-ui,sans-serif;font-size:11px;color:#0f172a;line-height:1.45}h1{font-size:18px;margin-bottom:4px}h2{font-size:12px;color:#1e3a5f;border-bottom:2px solid #3b82f6;padding-bottom:2px;margin:14px 0 6px}h3{font-size:11px;color:#334155;margin:10px 0 4px}ul.ref-pdf{margin:4px 0 8px 14px;padding:0;font-size:8.5px;color:#475569}ul.ref-pdf li{margin:3px 0}.box{border:2px solid #64748b;border-radius:8px;padding:12px;text-align:center;margin:10px 0}.val{font-size:26px;font-weight:800}.muted{color:#64748b;font-size:9px}.disc{border:1px solid #fbbf24;background:#fffbeb;padding:8px 10px;border-radius:6px;margin:10px 0;font-size:8.5px;color:#78350f}.footer{margin-top:16px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:8px;color:#94a3b8}.pagebreak{page-break-before:always}table{width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:9.5px}th,td{border:1px solid #cbd5e1;padding:4px 5px;vertical-align:top}th{background:#f1f5f9}';
+
+  function palmBlockHTML() {
+    var cai = document.getElementById('p-cai').value;
+    var ari = document.getElementById('p-ari').value;
+    var supa = document.getElementById('p-supa').value;
+    var nsup = document.getElementById('p-nsup').value;
+    var rows = [
+      ['Central apnea index (/h)', cai || '—'],
+      ['Arousal index (/h)', ari || '—'],
+      ['Supine AHI', supa || '—'],
+      ['Non-supine AHI', nsup || '—'],
+    ];
+    var body = rows.map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>';
+    }).join('');
+    return '<h2>PALM — report-based notes</h2><p class="muted">P = pharyngeal muscle responsiveness; A = anatomy/collapsibility; L = arousal threshold; M = loop gain. Values below are optional fields from the sleep report — they do not establish endotype diagnosis.</p><table><thead><tr><th>Variable</th><th>Value</th></tr></thead><tbody>' + body + '</tbody></table><h3>References (endotypes)</h3><ul class="ref-pdf"><li>Eckert DJ, et al. Phenotypic causes of OSA. <em>Am J Respir Crit Care Med.</em> 2013;188(5):596–603.</li><li>Wellman A, et al. Pathophysiology of OSA. <em>Proc Am Thorac Soc.</em> 2008;5(2):156–163.</li></ul><p class="muted">Interpret with AHI, symptoms, comorbidities. Formal endotyping may require specialized maneuvers or models.</p>';
+  }
+
+  function pdfRefsForMethod(mode) {
+    if (mode === 'direct') {
+      return '<h2>References — method (direct / event rows)</h2><ul class="ref-pdf">' +
+        '<li>Azarbarzin A, et al. Hypoxic burden and cardiovascular mortality (MrOS, SHHS). <em>Eur Heart J.</em> 2019;40(14):1149–1157.</li>' +
+        '<li>Esmaeili A, et al. Automated hypoxic burden vs scoring-based HB. <em>Ann Am Thorac Soc.</em> 2023;20(5):678–686.</li>' +
+        '</ul><p class="muted">Triangular summation here approximates event-area integration; primary studies use continuous SpO₂ with event alignment.</p>';
+    }
+    return '<h2>References — method (indirect / summary)</h2><ul class="ref-pdf">' +
+      '<li>Azarbarzin A, et al. HB as integrated desaturation load. <em>Eur Heart J.</em> 2019;40(14):1149–1157.</li>' +
+      '<li>Formula: HB ≈ ODI × ½ × mean depth × (mean duration in min); screening use when event-level data are absent — uniform-event assumption.</li>' +
+      '</ul><p class="muted">Correlate with report definitions of ODI, TST, and artifact handling.</p>';
+  }
+
+  function pdfRefsRiskEvidence() {
+    return '<h2>References — cardiovascular risk context (bands)</h2><ul class="ref-pdf">' +
+      '<li>Azarbarzin A, et al. <em>Eur Heart J.</em> 2019;40(14):1149–1157.</li>' +
+      '<li>Kim J, et al. MESA / blood pressure. <em>Thorax.</em> 2020;75(5):422–429.</li>' +
+      '<li>Blanchard M, et al. Stroke (ERMES). <em>Eur Respir J.</em> 2021;58(5):2003343.</li>' +
+      '<li>Esmaeili A, et al. Oximetry HB. <em>Ann Am Thorac Soc.</em> 2023;20(5):678–686.</li>' +
+      '<li>RICCADSA analysis. MACCE in CAD + OSA. <em>Chest.</em> 2025.</li>' +
+      '<li>Zeng J, et al. HB thresholds / ASCVD. <em>Nat Sci Sleep.</em> 2025;2:112–124.</li>' +
+      '</ul>';
+  }
+
+  function pdfDisclaimerBlock(mode) {
+    var m = mode === 'indirect'
+      ? 'Indirect HB is an estimate from summary statistics and assumes typical depth and duration for all events.'
+      : 'Direct HB here uses a triangular area sum per event; waveform-based ensemble methods may differ.';
+    return '<div class="disc"><strong>Research use — clinical correlation required.</strong> ' + m +
+      ' This output is for research and education, not a medical device, and does not replace interpretation of the source polysomnogram or home sleep test. Risk bands synthesize heterogeneous cohorts and are not formal society staging. ' +
+      'All conclusions require correlation with the primary sleep study, scoring criteria, comorbidities (e.g. lung disease), symptoms, examination, and clinician judgment. Not for standalone diagnosis or treatment decisions.</div>';
+  }
+
+  function exportPDF() {
+    var ref = (document.getElementById('pdf-ref').value || '').trim();
+    calcDirect();
+    calcIndirect();
+    var activeBtn = document.querySelector('.tabs button.active');
+    var tab = activeBtn ? activeBtn.getAttribute('data-tab') : '';
+    var dr = window._directResults;
+    var ir = window._indirectResults;
+    var directOk = dr && dr.events && dr.events.length > 0;
+    var useDirect = false;
+    if (tab === 'direct') {
+      useDirect = directOk;
+    } else if (tab === 'indirect') {
+      useDirect = false;
+    } else {
+      useDirect = directOk;
+    }
+    var hb;
+    var mode;
+    if (useDirect && directOk) {
+      hb = dr.hb;
+      mode = 'direct';
+    } else if (ir) {
+      hb = ir.hb;
+      mode = 'indirect';
+    } else {
+      alert('Enter values in “Direct” or “From report totals” to compute HB before export.');
+      return;
+    }
+    var sev = getSev(hb);
+    var when = new Date().toISOString().slice(0, 10);
+
+    var bodyCalc = '';
+    if (mode === 'direct' && dr && dr.events.length) {
+      var r = dr;
+      var evRows = r.events.map(function (e, i) {
+        var d = e.pre - e.nadir;
+        var a = d * e.dur / 60 / 2;
+        return '<tr><td>' + (i + 1) + '</td><td>' + e.pre + '</td><td>' + e.nadir + '</td><td>' + d.toFixed(1) + '</td><td>' + e.dur + '</td><td>' + a.toFixed(2) + '</td></tr>';
+      }).join('');
+      bodyCalc =
+        '<h2>Method: direct (event rows)</h2><p class="muted">TST = ' + r.tst + ' h; events = ' + r.events.length + '; total area = ' + r.totalArea.toFixed(2) + ' %·min.</p>' +
+        '<table><thead><tr><th>#</th><th>Pre</th><th>Nadir</th><th>Depth</th><th>Dur (s)</th><th>Area</th></tr></thead><tbody>' + evRows + '</tbody></table>';
+    } else if (ir) {
+      var ir2 = ir;
+      bodyCalc =
+        '<h2>Method: indirect (summary)</h2><p>ODI ' + ir2.odi.toFixed(1) + '/h; mean depth ' + ir2.depth.toFixed(1) + '%; mean duration ' + ir2.dur.toFixed(0) + ' s; avg area/event ' + ir2.avgArea.toFixed(2) + '.</p>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>HB summary</title><style>' + pdfCSS + '</style></head><body>' +
+      '<h1>Hypoxic burden summary (research)</h1>' +
+      '<p class="muted">Generated ' + when + (ref ? '. Internal ref: ' + escapeHtml(ref) : '.') + ' For research / education; must be clinically correlated.</p>' +
+      pdfDisclaimerBlock(mode) +
+      '<div class="box" style="border-color:' + sev.color + '"><div class="muted">Hypoxic burden</div><div class="val" style="color:' + sev.color + '">' + hb.toFixed(1) + ' <span style="font-size:12px;font-weight:600">%·min/h</span></div><div style="margin-top:6px;font-weight:700;color:' + sev.color + '">' + sev.label + ' — ' + sev.risk + ' (illustrative band)</div></div>' +
+      bodyCalc +
+      pdfRefsForMethod(mode) +
+      '<div class="pagebreak"></div>' +
+      '<h2>Cardiovascular risk bands (HB)</h2><p class="muted">Illustrative stratification — not society-endorsed staging. Interpret with full clinical context.</p>' +
+      severityTableHTML() +
+      pdfRefsRiskEvidence() +
+      palmBlockHTML() +
+      '<div class="footer">Research / educational use. Clinical correlation required. Verify inputs against the source sleep study. Not a medical device.</div></body></html>';
+
+    var w = window.open('', '_blank');
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(function () { w.print(); }, 400);
+  }
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  document.getElementById('btn-export-pdf').addEventListener('click', exportPDF);
+
+  renderDirectEvents();
+  calcIndirect();
+})();
+</script>
+</body>
+</html>
