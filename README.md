@@ -1,17 +1,36 @@
-# LERTZZ
+# PULMOVOX
 
-## Hypoxic burden calculator (web)
+Research utilities for sleep-related tooling. This repository is **not** affiliated with any other project.
 
-Static HTML tool: open `hypoxic_burden_calculator.html` locally or use the GitHub Pages link after you enable Pages (see below).
+## Hypoxic burden calculator
 
-**Live URL (after Pages is on):**  
-`https://drvamsimutnuri-stack.github.io/LERTZZ/hypoxic_burden_calculator.html`
+Static HTML: open [`hypoxic_burden_calculator.html`](hypoxic_burden_calculator.html) in a browser, or host it (e.g. GitHub Pages) for a shareable URL.
 
-### Enable GitHub Pages
+### Publish on a new GitHub repository
 
-1. On GitHub: **Settings → Pages** (under “Code and automation”).
-2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
-3. **Branch:** `main`, **Folder:** `/ (root)`.
-4. Save. After the workflow finishes (usually under a minute), the link above works.
+1. On GitHub, create a **new empty** repository (any name you like, e.g. `PULMOVOX`). Do **not** add a README/license if you already have commits locally.
+2. In this folder, point `origin` at the new repo and push:
 
-If your username or repo name differs, the pattern is `https://<user>.github.io/<repo>/hypoxic_burden_calculator.html`.
+```bash
+git remote add origin https://github.com/YOUR_USER/YOUR_NEW_REPO.git
+git branch -M main
+git push -u origin main
+```
+
+If this folder still had an old `origin` from another repo, remove it first:
+
+```bash
+git remote remove origin
+git remote add origin https://github.com/YOUR_USER/YOUR_NEW_REPO.git
+git push -u origin main
+```
+
+### GitHub Pages link
+
+After the first push, enable Pages: **Repository → Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, Folder: `/ (root)`**.
+
+Your calculator will be at:
+
+`https://YOUR_USER.github.io/YOUR_NEW_REPO/hypoxic_burden_calculator.html`
+
+Replace `YOUR_USER` and `YOUR_NEW_REPO` with your GitHub username and repository name.
