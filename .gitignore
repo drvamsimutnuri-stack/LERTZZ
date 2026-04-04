@@ -2,3 +2,6 @@
 .pdfdeps/
 .pydeps/
 *.code-workspace
+
+# Standalone nested repo (hypoxic burden tool — own remote)
+hypoxic-burden-calculator/
