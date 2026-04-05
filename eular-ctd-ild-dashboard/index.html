@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CTD–ILD — Educational dashboard</title>
+    <link rel="stylesheet" href="./css/dashboard.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="top-bar">
+        <div class="brand">
+          <h1 id="dash-title">CTD–ILD — Educational dashboard</h1>
+          <p id="dash-tagline" class="tagline"></p>
+        </div>
+        <div class="search-block">
+          <input
+            type="search"
+            id="search-input"
+            placeholder="Search topics, tags, or concepts (e.g. screening, PFTs, pregnancy)…"
+            autocomplete="off"
+            aria-label="Search dashboard content"
+          />
+          <span id="search-stats" class="search-stats"></span>
+        </div>
+        <div id="disclaimer-banner" class="disclaimer-banner" role="note">
+          <span id="disclaimer-text"></span>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section aria-label="Topic cards">
+          <div id="topic-grid" class="grid"></div>
+        </section>
+        <aside id="detail-panel" class="detail-panel empty" aria-live="polite">
+          <p>Select a topic to open three explanatory lenses and a PDF section hint.</p>
+        </aside>
+      </div>
+
+      <p class="footer-note">
+        Curated educational content — replace placeholders in <code>data/topics.json</code> with wording aligned to your
+        guideline version. Add a link to your full PDF or GitHub Pages viewer if needed.
+      </p>
+    </div>
+    <script type="module" src="./js/dashboard.js"></script>
+  </body>
+</html>
