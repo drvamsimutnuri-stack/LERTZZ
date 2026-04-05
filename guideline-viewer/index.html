@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Serve over HTTP (file:// breaks the PDF.js worker). Example: python3 -m http.server 8080 -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EULAR — Guideline viewer</title>
+    <link rel="stylesheet" href="./css/app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <header class="sidebar__head">
+          <div class="sidebar__title-block">
+            <h1>Guidelines</h1>
+            <p class="sidebar__tagline" id="guideline-tagline">
+              Educational navigator · Based on the open-access EULAR guideline PDF
+              <span class="sidebar__tagline-note">(replace with your document title &amp; year in this HTML)</span>
+            </p>
+          </div>
+          <label class="file-pill">
+            <input type="file" id="file-input" accept="application/pdf" hidden />
+            Open PDF…
+          </label>
+        </header>
+
+        <div class="sidebar__disclaimer" role="note" aria-label="Disclaimer">
+          <details class="disclaimer-details">
+            <summary>Disclaimer &amp; attribution</summary>
+            <div class="disclaimer-body">
+              <p>
+                This tool helps you <strong>navigate and search</strong> the published guideline PDF. It does not
+                replace reading the <strong>full official document</strong>. Summaries, classifications, and search
+                highlights are for <strong>education and convenience</strong> only.
+              </p>
+              <p>
+                <strong>Not medical advice.</strong> Not a substitute for professional judgment, diagnosis, or
+                treatment. Always verify critical information against the original guideline and your local protocols.
+              </p>
+              <p class="disclaimer-affil">
+                This viewer is not affiliated with or endorsed by the guideline authors or society unless formally
+                stated elsewhere. Open-access source: use only in line with the publisher’s terms.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <section class="panel">
+          <h2>Table of contents</h2>
+          <div id="toc-root" class="toc"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Classifications</h2>
+          <p class="hint">Edit <code>classifications.json</code> to customize links.</p>
+          <div id="classifications-root" class="classifications"></div>
+        </section>
+
+        <section class="panel panel--search">
+          <h2>Search</h2>
+          <div class="search-row">
+            <input
+              type="search"
+              id="search-input"
+              placeholder="Full document search…"
+              autocomplete="off"
+            />
+            <button type="button" id="search-btn">Search</button>
+          </div>
+          <div id="search-stats" class="search-stats"></div>
+          <ul id="search-results" class="search-results"></ul>
+        </section>
+      </aside>
+
+      <main class="main">
+        <div class="toolbar">
+          <div class="toolbar__nav">
+            <button type="button" id="btn-prev" aria-label="Previous page">◀</button>
+            <label class="page-jump">
+              Page
+              <input type="number" id="page-input" min="1" value="1" />
+              <span id="page-total">/ —</span>
+            </label>
+            <button type="button" id="btn-next" aria-label="Next page">▶</button>
+          </div>
+          <div class="toolbar__zoom">
+            <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+            <span id="zoom-label">100%</span>
+            <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" id="fit-width">Fit width</button>
+          </div>
+        </div>
+        <div id="viewer" class="viewer" tabindex="0"></div>
+        <footer class="main-footer" aria-label="Attribution">
+          <p class="main-footer__line">
+            <span class="main-footer__label">Source:</span> open-access guideline PDF · Educational navigation only
+          </p>
+        </footer>
+      </main>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
